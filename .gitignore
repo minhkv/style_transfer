@@ -1,0 +1,6 @@
+MNIST_data/
+log/
+mnist_dataset.py
+*bak*
+**/*.pyc
+dcgan.py
