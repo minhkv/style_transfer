@@ -1,4 +1,5 @@
 MNIST_data/
+USPS_data/
 log/
 mnist_dataset.py
 *bak*

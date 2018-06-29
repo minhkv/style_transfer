@@ -33,22 +33,13 @@ class Autoencoder:
             x = tf.layers.max_pooling2d(inputs=x, pool_size=[2, 2], strides=2, name="S3")
 
             x = tf.contrib.layers.flatten(x)
-            print(x)
-            mn          = tf.layers.dense(x, units=self.n_latent)
-            sd          = 0.5 * tf.layers.dense(x, units=self.n_latent)            
-            epsilon     = tf.random_normal(tf.stack([tf.shape(x)[0], self.n_latent])) 
-            z           = mn + tf.multiply(epsilon, tf.exp(sd))
-            return x, mn, sd
+            return x
 
     def decoder(self, sampled_z, keep_prob):
         with tf.variable_scope("decoder", reuse=None):
             x = tf.layers.dense(sampled_z, units=256, activation=relu)
             x = tf.reshape(x, shape=[-1, 1, 1, 256])
-            # x = tf.layers.dense(x, units=self.inputs_decoder * 2 + 1, activation=relu)
-            print(x)
             x = tf.image.resize_images(images=x, size=[2, 2]) #U3
-            # tf.keras.layers.UpSampling2D(x, )
-            print(x)
             
             x = tf.layers.conv2d_transpose(x, filters=512, kernel_size=5, strides=1, padding='same', activation=tf.nn.relu)
             x = tf.image.resize_images(images=x, size=[12, 12])
@@ -71,13 +62,12 @@ class Autoencoder:
         Y_flat = tf.reshape(self.Y, shape=[-1, 32 * 32])
         self.keep_prob = tf.placeholder(dtype=tf.float32, shape=(), name='keep_prob')
 
-        sampled, mn, sd = self.encoder(h, self.keep_prob)
+        sampled = self.encoder(h, self.keep_prob)
         dec = self.decoder(sampled, self.keep_prob)
 
         unreshaped = tf.reshape(dec, [-1, 32*32])
         img_loss = tf.reduce_sum(tf.squared_difference(unreshaped, Y_flat), 1)
-        latent_loss = -0.5 * tf.reduce_sum(1.0 + 2.0 * sd - tf.square(mn) - tf.exp(2.0 * sd), 1)
-        self.loss = tf.reduce_mean(img_loss + latent_loss)
+        self.loss = tf.reduce_mean(img_loss)
         self.optimizer = tf.train.AdamOptimizer(0.0005).minimize(self.loss)
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
