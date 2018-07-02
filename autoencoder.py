@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.layers as lays
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -11,77 +12,79 @@ def relu(x):
     return tf.nn.relu(x)
 class Autoencoder:
     def __init__(self):
-        self.dec_in_channels = 1
-        self.n_latent = 8
+        self._construct()
 
-        self.reshaped_dim = [-1, 7, 7, self.dec_in_channels]
-        self.inputs_decoder = 49 * self.dec_in_channels / 2
-        self.construct()
-
-    def encoder(self, X_in, keep_prob):
+    def encoder(self, inputs):
         
+        # encoder
+        # C1: 1 x 32 x 32   ->  64 x 32 x 32
+        # S1: 64 x 32 x 32  ->  64 x 16 x 16
+        
+        # C2: 64 x 16 x 16  -> 128 x 12 x 12 
+        # S2: 128 x 12 x 12 -> 128 x 6 x 6
+        
+        # C3: 128 x 6 x 6   -> 256 x 2 x 2 
+        # S3: 256 x 2 x 2   -> 256 x 1 x 1
         with tf.variable_scope("encoder", reuse=None):
-            X = tf.reshape(X_in, shape=[-1, 32, 32, 1])
+            net = lays.conv2d(inputs, 64, [5, 5], strides=1, padding='SAME', name="C1")
+            net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S1")
+            
+            net = lays.conv2d(net, 128, [5, 5], strides=1, padding='VALID', name="C2")
+            net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S2")
+            
+            net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', name="C3")
+            net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S3")
+            return net
 
-            x = tf.layers.conv2d(X, filters=64, kernel_size=5, strides=1, padding='same', activation=tf.nn.relu, name="C1")
-            x = tf.layers.max_pooling2d(inputs=x, pool_size=[2, 2], strides=2, name="S1")
-
-            x = tf.layers.conv2d(x, filters=128, kernel_size=5, strides=1, padding='valid', activation=tf.nn.relu, name="C2")
-            x = tf.layers.max_pooling2d(inputs=x, pool_size=[2, 2], strides=2, name="S2")
-
-            x = tf.layers.conv2d(x, filters=256, kernel_size=5, strides=1, padding='valid', activation=tf.nn.relu, name="C3")
-            x = tf.layers.max_pooling2d(inputs=x, pool_size=[2, 2], strides=2, name="S3")
-
-            x = tf.contrib.layers.flatten(x)
-            return x
-
-    def decoder(self, sampled_z, keep_prob):
+    def decoder(self, latent):
+        # decoder
+        # U3: 256 x 1 x 1   -> 256 x 2 x 2
+        # D3: 256 x 2 x 2   -> 512 x 6 x 6
+        
+        # U2: 512 x 6 x 6   -> 512 x 12 x 12
+        # D2: 512 x 12 x 12 -> 256 x 16 x 16
+        
+        # U1: 256 x 16 x 16 -> 256 x 32 x 32 
+        # D1: 256 x 32 x 32 -> 128 x 32 x 32
+        
+        # output: 128 x 32 x 32 -> 1 x 32 x 32
         with tf.variable_scope("decoder", reuse=None):
-            x = tf.layers.dense(sampled_z, units=256, activation=relu)
-            x = tf.reshape(x, shape=[-1, 1, 1, 256])
-            x = tf.image.resize_images(images=x, size=[2, 2]) #U3
+            net = tf.image.resize_images(images=latent, size=[2, 2]) 
+            net = lays.conv2d_transpose(net, 512, [5, 5], strides=1, padding='VALID', name="D3")
             
-            x = tf.layers.conv2d_transpose(x, filters=512, kernel_size=5, strides=1, padding='same', activation=tf.nn.relu)
-            x = tf.image.resize_images(images=x, size=[12, 12])
-
-            x = tf.layers.conv2d_transpose(x, filters=256, kernel_size=5, strides=1, padding='same', activation=tf.nn.relu)
-            x = tf.image.resize_images(images=x, size=[32, 32])
-
-            x = tf.layers.conv2d_transpose(x, filters=128, kernel_size=5, strides=1, padding='same', activation=tf.nn.relu)
+            net = tf.image.resize_images(images=net, size=[12, 12]) 
+            net = lays.conv2d_transpose(net, 256, [5, 5], strides=1, padding='VALID', name="D2")
             
-            x = tf.contrib.layers.flatten(x)
-            x = tf.layers.dense(x, units=32*32, activation=tf.nn.sigmoid)
-            img = tf.reshape(x, shape=[32, 32])
-            return img
+            net = tf.image.resize_images(images=net, size=[32, 32]) 
+            net = lays.conv2d_transpose(net, 128, [5, 5], strides=1, padding='SAME', name="D1")
+            
+            net = lays.conv2d_transpose(net, 1, [5, 5], strides=1, padding='SAME', name="output")
+            return net
 
-    def construct(self):
+    def _construct(self):
+        lr = 0.0001        # Learning rate
         tf.reset_default_graph()
-        self.X_in = tf.placeholder(dtype=tf.float32, shape=[None, 32, 32], name='X')
-        h = self.X_in
-        self.Y    = tf.placeholder(dtype=tf.float32, shape=[None, 32, 32], name='Y')
-        Y_flat = tf.reshape(self.Y, shape=[-1, 32 * 32])
-        self.keep_prob = tf.placeholder(dtype=tf.float32, shape=(), name='keep_prob')
-
-        sampled = self.encoder(h, self.keep_prob)
-        dec = self.decoder(sampled, self.keep_prob)
-
-        unreshaped = tf.reshape(dec, [-1, 32*32])
-        img_loss = tf.reduce_sum(tf.squared_difference(unreshaped, Y_flat), 1)
-        self.loss = tf.reduce_mean(img_loss)
-        self.optimizer = tf.train.AdamOptimizer(0.0005).minimize(self.loss)
+        self.ae_inputs = tf.placeholder(tf.float32, (None, 32, 32, 1))  # input to the network (MNIST images)
+        
+        latent = self.encoder(self.ae_inputs)
+        ae_outputs = self.decoder(latent)  # create the Autoencoder network
+        
+        # calculate the loss and optimize the network
+        self.loss = tf.reduce_mean(tf.square(ae_outputs - self.ae_inputs))  # claculate the mean square error loss
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss)
+        
+        # initialize the network
+        init = tf.global_variables_initializer()
+        
         self.sess = tf.Session()
-        self.sess.run(tf.global_variables_initializer())
-        
-        gen_reshape = tf.reshape(dec, [-1, 32, 32, 1])
-        source_reshape = tf.reshape(self.X_in, [-1, 32, 32, 1])
-
-        tf.summary.scalar('total_loss', self.loss)
-        tf.summary.image('gen_image', gen_reshape, 1)
-        tf.summary.image('source_image', source_reshape, 1)
+        self.sess.run(init)
+        tf.summary.scalar('loss', self.loss)
+        tf.summary.image('reconstructed', ae_outputs, 1)
+        tf.summary.image('source', self.ae_inputs, 1)
         self.merged = tf.summary.merge_all()
-        
-        self.train_writer = tf.summary.FileWriter('./log', self.sess.graph)
+        self.train_writer = tf.summary.FileWriter('/tmp/log', self.sess.graph)
 
     def fit(self, batch, step):
-        summary, _ = self.sess.run([self.merged, self.optimizer], feed_dict = {self.X_in: batch, self.Y: batch, self.keep_prob: 0.8})
+        summary, total_loss, _ = self.sess.run([self.merged, self.loss, self.optimizer], feed_dict = {self.ae_inputs: batch})
+        print("Iter {}: loss={}".format(step, total_loss))
         self.train_writer.add_summary(summary, step)
