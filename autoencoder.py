@@ -2,9 +2,6 @@ import tensorflow as tf
 import tensorflow.layers as lays
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm
-# %matplotlib inline
-from tensorflow.examples.tutorials.mnist import input_data
 
 def lrelu(x, alpha=0.3):
     return tf.maximum(x, tf.multiply(x, alpha))
@@ -12,7 +9,8 @@ def relu(x):
     return tf.nn.relu(x)
 class Autoencoder:
     def __init__(self):
-        self._construct()
+        self._construct_graph()
+        self._construct_summary()
 
     def encoder(self, inputs):
         
@@ -61,16 +59,17 @@ class Autoencoder:
             net = lays.conv2d_transpose(net, 1, [5, 5], strides=1, padding='SAME', name="output")
             return net
 
-    def _construct(self):
+    def _construct_graph(self):
         lr = 0.0001        # Learning rate
+        
         tf.reset_default_graph()
         self.ae_inputs = tf.placeholder(tf.float32, (None, 32, 32, 1))  # input to the network (MNIST images)
-        
-        latent = self.encoder(self.ae_inputs)
-        ae_outputs = self.decoder(latent)  # create the Autoencoder network
+        self.latent = self.encoder(self.ae_inputs)
+        self.specific, self.common = tf.split(self.latent, num_or_size_splits=2, axis=3)
+        self.ae_outputs = self.decoder(self.latent)  # create the Autoencoder network
         
         # calculate the loss and optimize the network
-        self.loss = tf.reduce_mean(tf.square(ae_outputs - self.ae_inputs))  # claculate the mean square error loss
+        self.loss = tf.reduce_mean(tf.square(self.ae_outputs - self.ae_inputs))  # claculate the mean square error loss
         self.optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss)
         
         # initialize the network
@@ -78,8 +77,10 @@ class Autoencoder:
         
         self.sess = tf.Session()
         self.sess.run(init)
+        
+    def _construct_summary(self):
         tf.summary.scalar('loss', self.loss)
-        tf.summary.image('reconstructed', ae_outputs, 1)
+        tf.summary.image('reconstructed', self.ae_outputs, 1)
         tf.summary.image('source', self.ae_inputs, 1)
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter('/tmp/log', self.sess.graph)
