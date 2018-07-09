@@ -8,10 +8,18 @@ def lrelu(x, alpha=0.3):
 def relu(x):
     return tf.nn.relu(x)
 class Autoencoder:
-    def __init__(self, name=""):
+    def __init__(self, name="", meta_graph=None, checkpoint_dir=None, lr = 0.0001):
         self.name = name
-        self._construct_graph()
-        self._construct_summary()
+        self.lr = lr
+        if meta_graph == None:
+            self._construct_graph()
+            self._construct_loss()
+            self._construct_summary()
+        else:
+            self._create_from_graph(meta_graph, checkpoint_dir)
+            # self._construct_loss()
+            # self._construct_summary()
+
 
     def encoder(self, inputs):
         # encoder
@@ -59,35 +67,44 @@ class Autoencoder:
             net = lays.conv2d_transpose(net, 1, [5, 5], strides=1, padding='SAME', name="output_{}".format(self.name))
             return net
 
+    def _create_from_graph(self, meta_graph, checkpoint_dir):
+        print("[LOG] Construct from graph")
+        self.sess = tf.Session()
+        saver = tf.train.import_meta_graph(meta_graph)
+        saver.restore(self.sess, checkpoint_dir)
+        graph = tf.get_default_graph()
+
+        self.ae_inputs = graph.get_tensor_by_name("input_{}:0".format(self.name))
+        self.latent = graph.get_tensor_by_name("encoder_{0}/S3_{0}/MaxPool:0".format(self.name))
+        self.ae_outputs = graph.get_tensor_by_name("decoder_{0}/output_{0}/BiasAdd:0".format(self.name))
+
+        self.loss = tf.losses.mean_squared_error(self.ae_inputs, self.ae_outputs, scope="loss_{}".format(self.name))
+        self.optimizer = tf.get_collection("optimizer_{}".format(self.name))[0]
+
     def _construct_graph(self):
-        
-        lr = 0.0001        # Learning rate
-        
-        # tf.reset_default_graph()
-        self.ae_inputs = tf.placeholder(tf.float32, (None, 32, 32, 1))  # input to the network (MNIST images)
-        
+        self.ae_inputs = tf.placeholder(tf.float32, (None, 32, 32, 1), name="input_{}".format(self.name))  # input to the network (MNIST images)
         self.latent = self.encoder(self.ae_inputs)
         self.ae_outputs = self.decoder(self.latent)  # create the Autoencoder network
-        
         self.specific, self.common = tf.split(self.latent, num_or_size_splits=2, axis=3, name="split_{}".format(self.name))
-        
+
+    def _construct_loss(self):
         # calculate the loss and optimize the network
-        self.loss = tf.reduce_mean(tf.square(self.ae_outputs - self.ae_inputs))  # claculate the mean square error loss
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=lr).minimize(self.loss)
-    
-    def init_variable(self):
-        
+        self.loss = tf.losses.mean_squared_error(self.ae_inputs, self.ae_outputs, scope="loss_{}".format(self.name))
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
+        tf.add_to_collection("optimizer_{}".format(self.name), self.optimizer)
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
-        # initialize the network
-        init = tf.global_variables_initializer()
-        
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-        self.sess.run(init)
-        
+
     def _construct_summary(self):
         tf.summary.scalar('loss', self.loss)
         tf.summary.image('reconstructed', self.ae_outputs, 1)
         tf.summary.image('source', self.ae_inputs, 1)
+
+    def init_variable(self):
+        # initialize the network
+        init = tf.global_variables_initializer()
+        self.sess.run(init)
+    
     def merge_all(self):
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter('/tmp/log', self.sess.graph)
@@ -96,7 +113,11 @@ class Autoencoder:
         summary, total_loss, _ = self.sess.run([self.merged, self.loss, self.optimizer], feed_dict = {self.ae_inputs: batch})
         # print("Iter {}: loss={}".format(step, total_loss))
         self.train_writer.add_summary(summary, step)
+
     def save_model(self):
         print("Saving model: {}".format(self.name))
         saver = tf.train.Saver()
         savepath = saver.save(self.sess, "/tmp/model/ae_{}".format(self.name))
+
+    def forward(self, batch):
+        return self.sess.run(self.ae_outputs, feed_dict = {self.ae_inputs: batch})

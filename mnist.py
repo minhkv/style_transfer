@@ -20,4 +20,4 @@ class MNISTDataset:
         batch_img, batch_label = self.mnist.train.next_batch(self.batch_size)  # read a batch
         batch_img = batch_img.reshape((-1, 28, 28, 1))               # reshape each sample to an (28, 28) image
         batch_img = self._resize_batch(batch_img)                          # reshape the images to (32, 32)
-        
+        return batch_img, batch_label

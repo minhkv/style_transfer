@@ -7,8 +7,8 @@ class DomainAdaptation:
     def __init__(self, source_autoencoder, target_autoencoder):
         self.source_autoencoder = source_autoencoder
         self.target_autoencoder = target_autoencoder
-        self._construct_graph()
-        self._construct_summary()
+        # self._construct_graph()
+        # self._construct_summary()
         
     def _construct_graph(self):
         source_specific_latent = self.source_autoencoder.specific
@@ -30,5 +30,8 @@ class DomainAdaptation:
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter('/tmp/log', self.sess.graph)
     def fit(self, batch, step):
-        self.source_autoencoder.fit(batch, step)
-        # self.target_autoencoder.fit(batch, step)
+        # source_inputs = self.source_autoencoder.ae_inputs
+        summary, loss, _ = self.sess.run(
+            [self.merged, self.source_autoencoder.loss, self.source_autoencoder.optimizer], 
+            feed_dict={self.source_autoencoder.ae_inputs: batch})
+        self.train_writer.add_summary(summary, step)        
