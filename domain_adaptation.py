@@ -16,13 +16,13 @@ class DomainAdaptation:
         target_specific_latent = self.target_autoencoder.specific
         target_common_latent = self.target_autoencoder.common
 
-        latent_transfer_to_source = tf.concat([source_specific_latent, target_common_latent], 3)
-        latent_transfer_to_target = tf.concat([target_specific_latent, source_common_latent], 3)
+        spe_source_com_target = tf.concat([source_specific_latent, target_common_latent], 3)
+        spe_target_com_source = tf.concat([target_specific_latent, source_common_latent], 3)
         
-        self.gen_transfer_to_source = self.source_autoencoder.decoder(latent_transfer_to_source)
+        self.img_spe_source_com_target = self.source_autoencoder.decoder(spe_source_com_target)
 
     def _construct_summary(self):
-        tf.summary.image("gen_transfer_to_source", self.gen_transfer_to_source)
+        tf.summary.image("spe_source_com_target", self.img_spe_source_com_target)
     def merge_all(self):
         init = tf.global_variables_initializer()
         self.sess = tf.Session()

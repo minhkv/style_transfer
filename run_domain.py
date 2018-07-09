@@ -23,7 +23,7 @@ domain_adaptation.merge_all()
 # mnist_autoencoder.init_variable()
 # mnist_autoencoder.merge_all() 
 
-for step in (range(100)):
+for step in (range(500)):
     batch_img, batch_label = mnist_data.next_batch_train() 
     batch_target, label_target = usps_data.next_batch_train()
     domain_adaptation.fit(batch_img, batch_target, step)

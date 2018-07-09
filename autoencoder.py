@@ -32,13 +32,13 @@ class Autoencoder:
         # C3: 128 x 6 x 6   -> 256 x 2 x 2 
         # S3: 256 x 2 x 2   -> 256 x 1 x 1
         with tf.variable_scope("encoder_{}".format(self.name), reuse=tf.AUTO_REUSE):
-            net = lays.conv2d(inputs, 64, [5, 5], strides=1, padding='SAME', name="C1")
+            net = lays.conv2d(inputs, 64, [5, 5], strides=1, padding='SAME', activation=relu, name="C1")
             net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S1")
             
-            net = lays.conv2d(net, 128, [5, 5], strides=1, padding='VALID', name="C2")
+            net = lays.conv2d(net, 128, [5, 5], strides=1, padding='VALID', activation=relu, name="C2")
             net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S2")
             
-            net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', name="C3")
+            net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', activation=relu, name="C3")
             net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S3")
             return net
 
@@ -56,15 +56,16 @@ class Autoencoder:
         # output: 128 x 32 x 32 -> 1 x 32 x 32
         with tf.variable_scope("decoder_{}".format(self.name), reuse=tf.AUTO_REUSE):
             net = tf.image.resize_images(images=latent, size=[2, 2]) 
-            net = lays.conv2d_transpose(net, 512, [5, 5], strides=1, padding='VALID', name="D3")
+            net = lays.conv2d_transpose(net, 512, [5, 5], strides=1, padding='VALID', activation=relu, name="D3")
             
             net = tf.image.resize_images(images=net, size=[12, 12]) 
-            net = lays.conv2d_transpose(net, 256, [5, 5], strides=1, padding='VALID', name="D2")
+            net = lays.conv2d_transpose(net, 256, [5, 5], strides=1, padding='VALID', activation=relu, name="D2")
             
             net = tf.image.resize_images(images=net, size=[32, 32]) 
-            net = lays.conv2d_transpose(net, 128, [5, 5], strides=1, padding='SAME', name="D1")
+            net = lays.conv2d_transpose(net, 128, [5, 5], strides=1, padding='SAME', activation=relu, name="D1")
             
-            net = lays.conv2d_transpose(net, 1, [5, 5], strides=1, padding='SAME', name="output")
+            net = lays.conv2d_transpose(net, 1, [5, 5], strides=1, padding='SAME', activation=relu, name="output")
+            # net = tf.sigmoid(net,name='output')
             return net
 
     def _create_from_graph(self, meta_graph, checkpoint_dir):
