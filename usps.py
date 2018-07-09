@@ -13,7 +13,10 @@ class USPSDataset:
             test = hf.get('test')
             X_te = test.get('data')[:]
             y_te = test.get('target')[:]
-        self.current_train_batch = 0
+        
+        
+        self.current_index = 0
+        
         self.num_train_batch = len(self.X_tr) // batch_size
         
     def _resize_batch(self, imgs):
@@ -24,17 +27,22 @@ class USPSDataset:
         return resized_imgs
         
     def next_batch_train(self):
-        current_batch = self.current_train_batch
-        start = current_batch * self.batch_size
-        end = (current_batch + 1) * self.batch_size 
-        if end > len(self.X_tr):
-            end = len(self.X_tr) - 1
-            self.current_train_batch = 0
-            
-        data = self.X_tr[start: end]
-        data = self._resize_batch(data)
         
+        addition_from_start = 0
+        start = self.current_index
+        end = start + self.batch_size
+        if end > len(self.X_tr):
+            addition_from_start = end - len(self.X_tr) + 1
+            end = len(self.X_tr) - 1
+            self.current_index = addition_from_start
+        else: 
+            self.current_index += self.batch_size
+        
+        data = self.X_tr[start:end]
         label = self.y_tr[start: end]
-        self.current_train_batch += 1
+        if addition_from_start > 0:
+            data = np.concatenate((data, self.X_tr[0:addition_from_start]), axis=0)
+            label = np.concatenate((label, self.y_tr[0:addition_from_start]), axis=0)
+        data = self._resize_batch(data)
         return data, label
         

@@ -13,7 +13,7 @@ tf.reset_default_graph()
 
 batch_size = 100  # Number of samples in each batch
 
-# usps_data = USPSDataset(batch_size=batch_size)
+usps_data = USPSDataset(batch_size=batch_size)
 mnist_data = MNISTDataset(batch_size=batch_size)
 mnist_autoencoder = Autoencoder(name="source")
 usps_autoencoder = Autoencoder(name="target")
@@ -23,9 +23,7 @@ domain_adaptation.merge_all()
 # mnist_autoencoder.init_variable()
 # mnist_autoencoder.merge_all() 
 
-for step in tqdm(range(2)):
+for step in (range(100)):
     batch_img, batch_label = mnist_data.next_batch_train() 
-    print (batch_img.shape)
-    domain_adaptation.fit(batch_img, step)
-# mnist_autoencoder.save_model()
-
+    batch_target, label_target = usps_data.next_batch_train()
+    domain_adaptation.fit(batch_img, batch_target, step)

@@ -7,8 +7,8 @@ class DomainAdaptation:
     def __init__(self, source_autoencoder, target_autoencoder):
         self.source_autoencoder = source_autoencoder
         self.target_autoencoder = target_autoencoder
-        # self._construct_graph()
-        # self._construct_summary()
+        self._construct_graph()
+        self._construct_summary()
         
     def _construct_graph(self):
         source_specific_latent = self.source_autoencoder.specific
@@ -29,9 +29,17 @@ class DomainAdaptation:
         self.sess.run(init)
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter('/tmp/log', self.sess.graph)
-    def fit(self, batch, step):
-        # source_inputs = self.source_autoencoder.ae_inputs
-        summary, loss, _ = self.sess.run(
-            [self.merged, self.source_autoencoder.loss, self.source_autoencoder.optimizer], 
-            feed_dict={self.source_autoencoder.ae_inputs: batch})
+    def fit(self, batch_source, batch_target, step):
+        source_inputs = self.source_autoencoder.ae_inputs
+        source_loss = self.source_autoencoder.loss
+        source_optimizer = self.source_autoencoder.optimizer
+        
+        target_inputs = self.target_autoencoder.ae_inputs
+        target_loss = self.target_autoencoder.loss
+        target_optimizer = self.target_autoencoder.optimizer
+        
+        summary, loss_s, loss_t, a, b = self.sess.run(
+            [self.merged, source_loss, target_loss, source_optimizer, target_optimizer], 
+            feed_dict={source_inputs: batch_source, target_inputs: batch_target})
+        print("Iter {}: loss source: {:.4f}, loss target: {:.4f}".format(step, loss_s, loss_t))
         self.train_writer.add_summary(summary, step)        
