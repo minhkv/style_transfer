@@ -118,7 +118,7 @@ class Autoencoder:
     def save_model(self):
         print("Saving model: {}".format(self.name))
         saver = tf.train.Saver()
-        savepath = saver.save(self.sess, "/tmp/model/ae_{}".format(self.name))
+        saver.save(self.sess, "/tmp/model/ae_{}".format(self.name))
 
     def forward(self, batch):
         return self.sess.run(self.ae_outputs, feed_dict = {self.ae_inputs: batch})
