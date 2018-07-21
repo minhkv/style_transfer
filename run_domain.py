@@ -20,14 +20,34 @@ usps_autoencoder = Autoencoder(name="target")
 domain_adaptation = DomainAdaptation(mnist_autoencoder, usps_autoencoder)
 domain_adaptation.merge_all()
 
-# mnist_autoencoder.init_variable()
-# mnist_autoencoder.merge_all() 
+r_c = 300
+r_f = 3
+current_step = 0
 
-for step in (range(1)):
+for step in (range(r_c)):
     batch_img, batch_label = mnist_data.next_batch_train() 
     batch_target, label_target = usps_data.next_batch_train()
-    domain_adaptation.minimize_autoencoder(batch_img, batch_target, step)
-for step in range(1):
-    batch_img, batch_label = mnist_data.next_batch_train() 
-    batch_target, label_target = usps_data.next_batch_train()
-    domain_adaptation.minimize_feedback(batch_img, batch_target, step + 100)
+    domain_adaptation.run_optimize_feature_classifier(batch_img, batch_target, batch_label,  step + current_step)
+
+# for i in range(9):
+    
+#     for step in (range(r_c)):
+#         batch_img, batch_label = mnist_data.next_batch_train() 
+#         batch_target, label_target = usps_data.next_batch_train()
+#         domain_adaptation.minimize_autoencoder(batch_img, batch_target, step + current_step)
+    
+#     current_step += r_c
+    
+#     for step in range(r_f):
+#         batch_img, batch_label = mnist_data.next_batch_train() 
+#         batch_target, label_target = usps_data.next_batch_train()
+#         domain_adaptation.minimize_feedback(batch_img, batch_target, step + current_step)
+        
+#     current_step += r_f
+        
+#     for step in (range(r_c)):
+#         batch_img, batch_label = mnist_data.next_batch_train() 
+#         batch_target, label_target = usps_data.next_batch_train()
+#         domain_adaptation.minimize_autoencoder(batch_img, batch_target, step + current_step)
+        
+#     current_step += r_c
