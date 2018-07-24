@@ -5,21 +5,50 @@ from discriminator import *
 lays = tf.layers
 
 class FeatureDiscriminator(Discriminator):
-    def model(self, inputs, labels):
-        with tf.variable_scope("discriminator_{}".format(self.name), reuse=tf.AUTO_REUSE):
-            with tf.variable_scope("feature_extract_{}".format(self.name), reuse=tf.AUTO_REUSE):
-                net = lays.conv2d(inputs, 64, [5, 5], strides=1, padding='SAME', activation=tf.nn.relu, name="C1")
-                net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S1")
-                
-                net = lays.conv2d(net, 128, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="C2")
-                net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S2")
-                
-                net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="C3")
-                # net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S3")
-                net = lays.flatten(net, name="C3_flat")
+    def model(self, inputs):
+        net = lays.dense(inputs, 128, activation=tf.nn.relu, name="F1")
+        net = lays.dense(net, 128, activation=tf.nn.relu, name="F2")
+        pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output_class")
+        pred_type = lays.dense(net, 1, activation=tf.nn.relu, name="output_type")
+        return pred_class, pred_type
+    
+    def _construct_graph(self):
+        self.inputs_source = self.endpoints["inputs_source"]
+        self.inputs_target = self.endpoints["inputs_target"]
+        self.vars_generator_source = self.endpoints["vars_generator_source"]
+        self.vars_generator_target = self.endpoints["vars_generator_target"]
+        self.class_labels = self.endpoints["class_labels"]
+        
+        with tf.variable_scope("discriminator_{}".format(self.name)) as scope:
+            self.logits_source, self.type_pred_source = self.model(self.inputs_source)
+        
+        with tf.variable_scope(scope, reuse=True) as scope2:
+            with tf.name_scope(scope2.original_name_scope):
+                self.logits_target, self.type_pred_target = self.model(self.inputs_target)
 
-            with tf.variable_scope("fully_connected_{}".format(self.name), reuse=tf.AUTO_REUSE):
-                net = lays.dense(net, 256, activation=tf.nn.relu)
-                net = lays.dense(net, 128, activation=tf.nn.relu)
-                net = lays.dense(net, 10, activation=tf.nn.relu)
-        return net
+    def _construct_loss(self):
+        # Type loss: source or target
+        # Adversarial learning
+        # source: type 1, target type: 0
+        with tf.variable_scope("loss_feature_discriminator_{}".format(self.name)):
+            loss_d_source = binary_cross_entropy(tf.ones_like(self.type_pred_source), self.type_pred_source)
+            loss_d_target = binary_cross_entropy(tf.zeros_like(self.type_pred_target), self.type_pred_target)
+            loss_g_feature_source = tf.reduce_mean(binary_cross_entropy(tf.zeros_like(self.type_pred_source), self.type_pred_source)) # gen target common
+            loss_g_feature_target = tf.reduce_mean(binary_cross_entropy(tf.ones_like(self.type_pred_target), self.type_pred_target)) # gen source common
+            self.loss_g_feature = tf.reduce_mean(0.5 * (loss_g_feature_source + loss_g_feature_target))
+            self.loss_d_feature = tf.reduce_mean(0.5 * (loss_d_source + loss_d_target))
+            
+            # Class loss: only for source 
+            self.class_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits_source, labels=self.class_labels))
+        vars_g = self.vars_generator_source + self.vars_generator_target
+        vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
+        # for v in vars_d:
+            # print(v)
+        self.optimizer_g_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_g_feature, var_list=vars_g)
+        self.optimizer_d_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_d_feature, var_list=vars_d)
+        self.optimizer_class = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.class_loss)
+
+    def _construct_summary(self):
+        tf.summary.scalar("type_loss_g_{}".format(self.name), self.loss_g_feature)
+        tf.summary.scalar("type_loss_d_{}".format(self.name), self.loss_d_feature)
+        tf.summary.scalar("class_loss_d_{}".format(self.name), self.class_loss)

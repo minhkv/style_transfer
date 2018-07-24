@@ -4,7 +4,7 @@ import numpy as np
 lays = tf.layers
 
 class FeatureClassifier:
-    def __init__(self, name="", lr = 0.0001):
+    def __init__(self, name="", inputs=None, lr = 0.0001):
         self.name = name
         self.lr = lr
         self._construct_graph()
@@ -18,18 +18,23 @@ class FeatureClassifier:
             net = lays.dense(net, 128, activation=tf.nn.relu)
             net = lays.dense(net, 10, activation=tf.nn.relu)
         return net
-    def _construct_graph(self):
-        self.inputs = tf.placeholder(tf.float32, (None, 256), name="input_{}".format(self.name))  
+    def _construct_graph(self, inputs=None):
+        
+        if inputs != None:
+            self.inputs = inputs
+        else:
+            self.inputs = tf.placeholder(tf.float32, (None, 256), name="input_{}".format(self.name))  
         self.labels = tf.placeholder(tf.float32, (None, 10), name="label_{}".format(self.name))  
         self.logits = self.model(self.inputs, self.labels)
 
     def _construct_loss(self):
-        self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits, labels=self.labels))
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
-
-        tf.add_to_collection("optimizer_{}".format(self.name), self.optimizer)
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
-        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+        with tf.variable_scope("loss_feature_classifier_{}".format(self.name)):
+            self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits, labels=self.labels))
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
+    
+            tf.add_to_collection("optimizer_{}".format(self.name), self.optimizer)
+            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
+            self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
     def _construct_summary(self):
         tf.summary.scalar("loss_d_{}".format(self.name), self.loss)
