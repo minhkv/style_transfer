@@ -162,8 +162,9 @@ class DomainAdaptation:
             self.optimizer_step4 = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="semantic_optimize").minimize(self.loss_step4)
         
     def _construct_optimizer(self):
-        with tf.variable_scope("optimize_feature_classifier"):
-            self.optimize_feature_classifier = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="feature_classifier_optimize").minimize(self.loss_feature_classifier)
+        pass
+        # with tf.variable_scope("optimize_feature_classifier"):
+        #     self.optimize_feature_classifier = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="feature_classifier_optimize").minimize(self.loss_feature_classifier)
         
         
     def _construct_feedback_loss(self, gen_img, spe_latent, com_latent, autoencoder):
