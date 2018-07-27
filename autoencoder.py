@@ -84,15 +84,16 @@ class Autoencoder:
         self.optimizer = tf.get_collection("optimizer_{}".format(self.name))[0]
 
     def _construct_graph(self):
-        self.ae_inputs = tf.placeholder(tf.float32, (None, 32, 32, 1), name="input_{}".format(self.name))  # input to the network (MNIST images)
+        with tf.variable_scope("data_{}".format(self.name)):
+            self.ae_inputs = tf.placeholder(tf.float32, (None, 32, 32, 1), name="input_{}".format(self.name))  # input to the network (MNIST images)
         with tf.variable_scope("encoder_{}".format(self.name)) as encoder_scope:
             self.latent = self.encoder(self.ae_inputs)
             self.encoder_scope = encoder_scope
         with tf.variable_scope("decoder_{}".format(self.name)) as decoder_scope:
             self.ae_outputs = self.decoder(self.latent)  # create the Autoencoder network
             self.decoder_scope = decoder_scope
-        
-        self.specific, self.common = tf.split(self.latent, num_or_size_splits=2, axis=3, name="split_{}".format(self.name))
+        with tf.variable_scope("latent_{}".format(self.name)):
+            self.specific, self.common = tf.split(self.latent, num_or_size_splits=2, axis=3, name="split_{}".format(self.name))
         self.endpoints['latent'] = self.latent
         self.endpoints['specific'] = self.specific
         self.endpoints['common'] = self.common
@@ -100,10 +101,9 @@ class Autoencoder:
     def _construct_loss(self):
         # calculate the loss and optimize the network
         with tf.variable_scope("loss_autoencoder_{}".format(self.name)):
-            self.loss = tf.losses.mean_squared_error(self.ae_inputs, self.ae_outputs, scope="loss_{}".format(self.name))
-
+            self.loss = tf.losses.mean_squared_error(self.ae_inputs, self.ae_outputs)
     def _construct_summary(self):
-        tf.summary.scalar('loss_{}'.format(self.name), self.loss)
+        tf.summary.scalar('loss_reconstruct_{}'.format(self.name), self.loss)
         tf.summary.image('reconstructed_{}'.format(self.name), self.ae_outputs, 3)
         tf.summary.image('inputs_{}'.format(self.name), self.ae_inputs, 3)
 

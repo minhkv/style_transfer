@@ -5,11 +5,9 @@ import matplotlib.pyplot as plt
 from autoencoder import *
 from feature_discriminator import *
 from domain_adaptation import *
-from domain_adaptation_runner import *
 from utils import *
 from usps import *
 from mnist import *
-from tqdm import tqdm
 
 tf.reset_default_graph()
 
