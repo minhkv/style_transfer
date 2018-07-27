@@ -5,3 +5,4 @@ mnist_dataset.py
 *bak*
 **/*.pyc
 dcgan.py
+model
