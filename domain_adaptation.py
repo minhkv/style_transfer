@@ -120,7 +120,8 @@ class DomainAdaptation:
 
         with tf.variable_scope("loss_autoencoder_{}".format(self.source_autoencoder.name)) as scope:
             with tf.name_scope(scope.original_name_scope):
-                self.loss_reconstruct_source_img_target = tf.losses.mean_squared_error(self.target_autoencoder.ae_inputs, self.reconstruct_source_target_data)
+                with tf.name_scope("reconstruct_target_data"):
+                    self.loss_reconstruct_source_img_target = tf.losses.mean_squared_error(self.target_autoencoder.ae_inputs, self.reconstruct_source_target_data)
         
         with tf.variable_scope("loss_feature_classifier"):
             # Feature classification loss
@@ -146,10 +147,6 @@ class DomainAdaptation:
             var_step2 = self.vars_feature_classifier + self.vars_encoder_source + self.vars_decoder_source
             self.optimizer_step2 = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_2_mnist").minimize(self.loss_step2, var_list=var_step2)
             
-            # self.loss_step2_usps = self.source_autoencoder.loss
-            # var_step2_usps = self.vars_encoder_source + self.vars_decoder_source
-            # self.optimizer_step2_usps = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_2_usps").minimize(self.loss_step2_usps, var_list=var_step2_usps)
-            
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.loss_g_feature
             self.loss_step3_d = self.feature_discriminator.loss_d_feature
@@ -162,8 +159,9 @@ class DomainAdaptation:
             self.optimizer_step4 = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="semantic_optimize").minimize(self.loss_step4)
         
     def _construct_optimizer(self):
-        with tf.variable_scope("optimize_feature_classifier"):
-            self.optimize_feature_classifier = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="feature_classifier_optimize").minimize(self.loss_feature_classifier)
+        pass
+        # with tf.variable_scope("optimize_feature_classifier"):
+        #     self.optimize_feature_classifier = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="feature_classifier_optimize").minimize(self.loss_feature_classifier)
         
         
     def _construct_feedback_loss(self, gen_img, spe_latent, com_latent, autoencoder):
@@ -172,24 +170,24 @@ class DomainAdaptation:
             with tf.name_scope(scope.original_name_scope):
                 feature_feedback = autoencoder.encoder(gen_img)
                 spe, com = tf.split(feature_feedback, num_or_size_splits=2, axis=3)
-        with tf.variable_scope("loss_L2_{}".format(autoencoder.name)):
-            loss_spe = tf.losses.mean_squared_error(spe_latent, spe)
-            loss_com = tf.losses.mean_squared_error(com_latent, com)
-            loss_fea = loss_spe + loss_com
-                
         with tf.variable_scope(autoencoder.decoder_scope, reuse=tf.AUTO_REUSE) as scope:
             with tf.name_scope(scope.original_name_scope):
                 rec_feed_img = autoencoder.decoder(feature_feedback)
                 
-        with tf.variable_scope("loss_rec_feed_{}".format(self.name)):
-            loss_rec_feed = tf.losses.mean_squared_error(gen_img, rec_feed_img, scope="loss_{}".format(self.name))
+        with tf.name_scope("loss_L2_{}".format(autoencoder.name)):
+            loss_spe = tf.losses.mean_squared_error(spe_latent, spe)
+            loss_com = tf.losses.mean_squared_error(com_latent, com)
+            loss_fea = loss_spe + loss_com
+                
+        with tf.name_scope("loss_rec_feed_{}".format(autoencoder.name)):
+            loss_rec_feed = tf.losses.mean_squared_error(gen_img, rec_feed_img)
             
         return loss_fea, loss_rec_feed
         
     def _construct_summary(self):
         tf.summary.image("spe_source_com_target", self.img_spe_source_com_target, 3)
         tf.summary.image("spe_target_com_source", self.img_spe_target_com_source, 3)
-        tf.summary.image("reconstruct_target_data", self.reconstruct_source_target_data, 3)
+        tf.summary.image("source_reconstruct_target_data", self.reconstruct_source_target_data, 3)
         tf.summary.scalar("feature_classifier_loss", self.loss_feature_classifier)
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
         tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
