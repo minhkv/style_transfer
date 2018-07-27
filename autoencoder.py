@@ -99,11 +99,8 @@ class Autoencoder:
 
     def _construct_loss(self):
         # calculate the loss and optimize the network
-        self.loss = tf.losses.mean_squared_error(self.ae_inputs, self.ae_outputs, scope="loss_{}".format(self.name))
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
-        tf.add_to_collection("optimizer_{}".format(self.name), self.optimizer)
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
-        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+        with tf.variable_scope("loss_autoencoder_{}".format(self.name)):
+            self.loss = tf.losses.mean_squared_error(self.ae_inputs, self.ae_outputs, scope="loss_{}".format(self.name))
 
     def _construct_summary(self):
         tf.summary.scalar('loss_{}'.format(self.name), self.loss)

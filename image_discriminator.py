@@ -19,19 +19,18 @@ class ImageDiscriminator(Discriminator):
             net = lays.flatten(net, name="C3_flat")
 
         with tf.variable_scope("fully_connected_{}".format(self.name), reuse=tf.AUTO_REUSE):
-            net = lays.dense(net, 256, activation=tf.nn.relu)
-            net = lays.dense(net, 128, activation=tf.nn.relu)
-            pred_class = lays.dense(net, 10, activation=tf.nn.relu)
-            pred_type = lays.dense(net, 1, activation=tf.nn.relu)
+            net = lays.dense(net, 256, activation=tf.nn.relu, name="F1")
+            net = lays.dense(net, 128, activation=tf.nn.relu, name="F2")
+            pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output")
+            pred_class = tf.nn.softmax(pred_class, name="prob_class")
+            pred_type = lays.dense(net, 1, activation=tf.nn.relu, name="type")
         return pred_class, pred_type
         
     def _construct_graph(self):
         
         self.inputs_real = self.endpoints["inputs_real"]
         self.inputs_fake = self.endpoints["inputs_fake"]
-        
         self.vars_generator = self.endpoints["vars_generator"]
-        # self.type_labels = self.endpoints["type_labels"]
         self.class_labels = self.endpoints["class_labels"]
         
         with tf.variable_scope("discriminator_{}".format(self.name)) as scope:
@@ -46,20 +45,21 @@ class ImageDiscriminator(Discriminator):
             loss_d_real = binary_cross_entropy(tf.ones_like(self.type_pred_real), self.type_pred_real)
             loss_d_fake = binary_cross_entropy(tf.zeros_like(self.type_pred_fake), self.type_pred_fake)
             loss_g_feature_real = tf.reduce_mean(binary_cross_entropy(tf.zeros_like(self.type_pred_real), self.type_pred_real)) # gen fake common
-            # loss_g_feature_fake = tf.reduce_mean(binary_cross_entropy(tf.ones_like(self.type_pred_fake), self.type_pred_fake)) # gen real common
+            
             self.loss_g_feature = tf.reduce_mean(loss_g_feature_real)
             self.loss_d_feature = tf.reduce_mean(0.5 * (loss_d_real + loss_d_fake))
             
             # Class loss: only for real 
             self.class_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits_real, labels=self.class_labels))
+            # total
+            self.total_loss_g = self.loss_g_feature + self.class_loss
+            self.total_loss_d = self.loss_d_feature + self.class_loss
         
-        
-        vars_g = self.vars_generator
-        vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
-        # for v in vars_d:
-            # print(v)
-        self.optimizer_g_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_g_feature, var_list=vars_g)
-        self.optimizer_d_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_d_feature, var_list=vars_d)
-        self.optimizer_class = tf.train.AdamOptimizer(learning_rate=self.lr, name="optimize_class_discriminator_{}".format(self.name)).minimize(self.class_loss)
+        self.vars_g = self.vars_generator
+        self.vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
+        # with tf.variable_scope("optimize_image_discriminator_{}".format(self.name)):
+        #     self.optimizer_g_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_g_feature, var_list=vars_g)
+        #     self.optimizer_d_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_d_feature, var_list=vars_d)
+        #     self.optimizer_class = tf.train.AdamOptimizer(learning_rate=self.lr, name="optimize_class_discriminator_{}".format(self.name)).minimize(self.class_loss)
         
     

@@ -9,6 +9,7 @@ class FeatureDiscriminator(Discriminator):
         net = lays.dense(inputs, 128, activation=tf.nn.relu, name="F1")
         net = lays.dense(net, 128, activation=tf.nn.relu, name="F2")
         pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output_class")
+        pred_class = tf.nn.softmax(pred_class, name="prob_class")
         pred_type = lays.dense(net, 1, activation=tf.nn.relu, name="output_type")
         return pred_class, pred_type
     
@@ -40,14 +41,11 @@ class FeatureDiscriminator(Discriminator):
             
             # Class loss: only for source 
             self.class_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits_source, labels=self.class_labels))
-        vars_g = self.vars_generator_source + self.vars_generator_target
-        vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
-        # for v in vars_d:
-            # print(v)
-        self.optimizer_g_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_g_feature, var_list=vars_g)
-        self.optimizer_d_feature = tf.train.RMSPropOptimizer(learning_rate=0.00015).minimize(self.loss_d_feature, var_list=vars_d)
-        self.optimizer_class = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.class_loss)
-
+            self.total_loss_g = self.loss_g_feature + self.class_loss
+            self.total_loss_d = self.loss_d_feature + self.class_loss
+        self.vars_g = self.vars_generator_source + self.vars_generator_target
+        self.vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
+    
     def _construct_summary(self):
         tf.summary.scalar("type_loss_g_{}".format(self.name), self.loss_g_feature)
         tf.summary.scalar("type_loss_d_{}".format(self.name), self.loss_d_feature)
