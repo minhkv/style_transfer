@@ -24,7 +24,6 @@ class Dataset:
         return imgs.reshape((-1, 16, 16, 1))
         
     def next_batch_train(self):
-        print(self.current_index)
         addition_from_start = 0
         start = self.current_index
         end = start + self.batch_size

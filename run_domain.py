@@ -21,8 +21,8 @@ usps_autoencoder = Autoencoder(name="target")
 domain_adaptation = DomainAdaptation(mnist_autoencoder, usps_autoencoder)
 domain_adaptation.merge_all()
 
-r_1_fc = 3000
-r_2_rec = 3000
+r_1_fc = 1000
+r_2_rec = 1000
 r_3_df = 100
 r_4_di = 10
 current_step = 0
