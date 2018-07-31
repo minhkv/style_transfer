@@ -9,12 +9,13 @@ def entropy_function(pk):
     return -pk * tf.log(pk)
 
 class DomainAdaptation:
-    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation"):
+    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log"):
         self.source_autoencoder = source_autoencoder
         self.target_autoencoder = target_autoencoder
         
         self.lr = lr
         self.name = name
+        self.logdir = logdir
         self._construct_graph()
         self._construct_loss()
         self._construct_optimizer()
@@ -47,6 +48,7 @@ class DomainAdaptation:
         self.vars_decoder_source = [var for var in tf.trainable_variables() if var.name.startswith('decoder_{}'.format(self.source_autoencoder.name))]
         self.vars_decoder_target = [var for var in tf.trainable_variables() if var.name.startswith('decoder_{}'.format(self.target_autoencoder.name))]
         self.vars_feature_classifier = [var for var in tf.trainable_variables() if var.name.startswith('feature_classifier_{}'.format(self.name))]
+        # self.vars_feature_discriminator = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.feature_discriminator.name))]
 
         # Feed target input to source ae
         with tf.variable_scope(self.source_autoencoder.encoder_scope, reuse=True) as scope:
@@ -140,31 +142,33 @@ class DomainAdaptation:
         with tf.name_scope("Step1"):
             self.loss_step1 = self.loss_feature_classifier
             var_step1 = self.vars_encoder_source + self.vars_feature_classifier
-            self.optimizer_step1 = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_1").minimize(self.loss_step1, var_list=var_step1)
+            self.optimizer_step1 = tf.train.AdagradOptimizer(learning_rate=0.01, name="optimize_1").minimize(self.loss_step1, var_list=var_step1)
+            
         with tf.name_scope("Step2"):
             self.loss_step2 = self.loss_feature_classifier + self.source_autoencoder.loss + self.loss_reconstruct_source_img_target
             var_step2 = self.vars_feature_classifier + self.vars_encoder_source + self.vars_decoder_source
-            self.optimizer_step2 = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
-            
-            # self.loss_step2_usps = self.source_autoencoder.loss
-            # var_step2_usps = self.vars_encoder_source + self.vars_decoder_source
-            # self.optimizer_step2_usps = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_2_usps").minimize(self.loss_step2_usps, var_list=var_step2_usps)
+            self.optimizer_step2 = tf.train.AdagradOptimizer(learning_rate=0.01, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
             
         with tf.name_scope("Step3"):
-            self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.loss_g_feature
-            self.loss_step3_d = self.feature_discriminator.loss_d_feature
+            self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
+            self.loss_step3_d = self.feature_discriminator.total_loss_d #+ self.feature_discriminator.class_loss
+            
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
             varlist_d = self.feature_discriminator.vars_d
-            self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=self.lr * 0.1, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
-            self.optimizer_step3_d = tf.train.GradientDescentOptimizer(learning_rate=self.lr * 0.1, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
+            self.optimizer_step3_g = tf.train.AdagradOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
+            self.optimizer_step3_d = tf.train.AdagradOptimizer(learning_rate=0.001, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
         with tf.name_scope("Step4"):
             self.loss_step4 = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
-            self.optimizer_step4 = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="semantic_optimize").minimize(self.loss_step4)
+            self.optimizer_step4 = tf.train.AdagradOptimizer(learning_rate=self.lr, name="semantic_optimize").minimize(self.loss_step4)
+    def duplicate_source_ae_to_target_ae(self):
+        print("[Info] Duplicate source ae to target ae")
+        vars_source = self.vars_encoder_source + self.vars_decoder_source
+        vars_target = self.vars_encoder_target + self.vars_decoder_target
+        for v_s, v_t in zip(vars_source, vars_target):
+            self.sess.run(v_t.assign(v_s))
         
     def _construct_optimizer(self):
         pass
-        # with tf.variable_scope("optimize_feature_classifier"):
-        #     self.optimize_feature_classifier = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="feature_classifier_optimize").minimize(self.loss_feature_classifier)
         
         
     def _construct_feedback_loss(self, gen_img, spe_latent, com_latent, autoencoder):
@@ -198,10 +202,12 @@ class DomainAdaptation:
         
     def merge_all(self):
         init = tf.global_variables_initializer()
-        self.sess = tf.Session()
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
+        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+        # self.sess = tf.Session()
         self.sess.run(init)
         self.merged = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter('/tmp/log', self.sess.graph)
+        self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
         
     def _feed_dict(self, batch_source, batch_target, source_label=[]):
         spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
@@ -237,19 +243,20 @@ class DomainAdaptation:
         self.train_writer.add_summary(summary, step)
     
     def run_step3(self, batch_source, batch_target, source_label, step):
-        summary, loss_g, _, loss_d, _ = self.sess.run(
-            [self.merged, self.loss_step3_g, self.optimizer_step3_g, self.loss_step3_d, self.optimizer_step3_d],
+        # for i in range(10):
+        #     loss_g, _ = self.sess.run(
+        #         [self.loss_step3_g, self.optimizer_step3_g],
+        #         feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+        #     )
+        # for i in range(1):
+        loss_g, loss_d, _ = self.sess.run(
+            [self.loss_step3_g, self.loss_step3_d, self.optimizer_step3_d],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
+            
+        summary = self.sess.run(self.merged, feed_dict=self._feed_dict(batch_source, batch_target, source_label))
         print("Iter {}: loss step3 g: {:.4f}, loss step3 d: {:.4f}".format(step, loss_g, loss_d))
+        # print("\t Type pred source: {}".format(type_pred_source[:10]))
         self.train_writer.add_summary(summary, step)
     
-    # Feature classifier
-    def run_optimize_feature_classifier(self, batch_source, batch_target, source_label, step):
-        summary, loss_fc, _ = self.sess.run(
-            [self.merged, self.loss_feature_classifier, self.optimize_feature_classifier],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
-        )
-        print("Iter {}: loss feature classifier: {:.4f}".format(step, loss_fc))
-        self.train_writer.add_summary(summary, step)    
     
