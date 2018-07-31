@@ -22,10 +22,16 @@ class FeatureDiscriminator(Discriminator):
         
         with tf.variable_scope("discriminator_{}".format(self.name)) as scope:
             self.logits_source, self.type_pred_source = self.model(self.inputs_source)
+            with tf.name_scope("class_source"):
+                self.class_predict_source = tf.reshape(self.logits_source, (-1, 10))
+                self.class_predict_source = tf.argmax(self.class_predict_source, axis=1, name="df_class_source")
         
         with tf.variable_scope(scope, reuse=True) as scope2:
             with tf.name_scope(scope2.original_name_scope):
                 self.logits_target, self.type_pred_target = self.model(self.inputs_target)
+                with tf.name_scope("class_target"):
+                    self.class_predict_target = tf.reshape(self.logits_target, (-1, 10))
+                    self.class_predict_target = tf.argmax(self.class_predict_target, axis=1, name="df_class_target")
 
     def _construct_loss(self):
         # Type loss: source or target

@@ -4,6 +4,7 @@ import numpy as np
 import scipy
 from feature_discriminator import *
 from image_discriminator import *
+from sklearn.metrics import accuracy_score
 lays = tf.layers
 def entropy_function(pk):
     return -pk * tf.log(pk)
@@ -22,10 +23,9 @@ class DomainAdaptation:
         self._construct_summary()
         
     def feature_classifier(self, inputs):
-        with tf.variable_scope("feature_classifier_{}".format(self.name), reuse=tf.AUTO_REUSE):
-            net = lays.dense(inputs, 128, activation=tf.nn.relu)
-            net = lays.dense(net, 128, activation=tf.nn.relu)
-            net = lays.dense(net, 10, activation=tf.nn.relu)
+        net = lays.dense(inputs, 128, activation=tf.nn.relu)
+        net = lays.dense(net, 128, activation=tf.nn.relu)
+        net = lays.dense(net, 10, activation=tf.nn.relu)
         return net
     
     def _construct_graph(self):
@@ -72,7 +72,10 @@ class DomainAdaptation:
                 self.img_spe_target_com_source = self.target_autoencoder.decoder(spe_target_com_source)
         
         # Feature classifier
-        self.predict_source_common = self.feature_classifier(self.source_autoencoder.common)
+        with tf.variable_scope("feature_classifier_{}".format(self.name), reuse=tf.AUTO_REUSE):
+            self.predict_source_common = self.feature_classifier(self.source_autoencoder.common)
+            self.predict_source_common = tf.reshape(self.predict_source_common, (-1, 10))
+            
         
         # Feature discriminator
         self.feature_discriminator = FeatureDiscriminator(
@@ -127,7 +130,8 @@ class DomainAdaptation:
         with tf.variable_scope("loss_feature_classifier"):
             # Feature classification loss
             self.loss_feature_classifier = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.predict_source_common, labels=self.source_label), name="loss_feature_classifier")
-        
+            self.feature_classifier_accuracy = tf.metrics.accuracy(labels=tf.argmax(self.source_label, 1), predictions=tf.argmax(self.predict_source_common, 1))
+            # print(tf.argmax(self.source_label, 1))
         with tf.variable_scope("loss_entropy"):
             print(self.image_discriminator_source.logits_fake)
             loss_entropy_gs = entropy_function(self.image_discriminator_source.logits_fake)
@@ -199,13 +203,17 @@ class DomainAdaptation:
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
         tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
         tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
+        tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy[1])
         
     def merge_all(self):
         init = tf.global_variables_initializer()
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-        # self.sess = tf.Session()
-        self.sess.run(init)
+        init_g = tf.global_variables_initializer()
+        init_l = tf.local_variables_initializer()
+
+        self.sess.run(init_g)
+        self.sess.run(init_l)
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
     def set_logdir(self, logdir):
@@ -229,10 +237,11 @@ class DomainAdaptation:
         }
     
     def run_step1(self, batch_source, batch_target, source_label, step):
-        summary, loss, _ = self.sess.run(
-            [self.merged, self.loss_step1, self.optimizer_step1],
+        summary, loss, _, pred_fc = self.sess.run(
+            [self.merged, self.loss_step1, self.optimizer_step1, self.predict_source_common],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
+        print("FC Accuracy: {}".format(accuracy_score(source_label, np.argmax(pred_fc, 1))))
         print("Iter {}: loss step1: {:.4f}".format(step, loss))
         self.train_writer.add_summary(summary, step)
         
