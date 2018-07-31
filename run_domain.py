@@ -1,6 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import numpy as np
-import os
+import os, sys
 import matplotlib.pyplot as plt
 
 from autoencoder import *
@@ -12,10 +12,15 @@ from mnist import *
 
 tf.reset_default_graph()
 
-save_iter = 2000
-name = "adagrad_step1_10K"
+save_iter = 1000
+name = sys.argv[1]
 model_folder = "./model/{}".format(name)
 logdir = os.path.join("log", name)
+step1_log = os.path.join(logdir, 'step1')
+step2_log = os.path.join(logdir, 'step2')
+step3_log = os.path.join(logdir, 'step3')
+step4_log = os.path.join(logdir, 'step4')
+
 step1_model = os.path.join(model_folder, 'step1')
 step2_model = os.path.join(model_folder, 'step2')
 step3_model = os.path.join(model_folder, 'step3')
@@ -29,6 +34,15 @@ if not os.path.exists(step3_model):
     os.makedirs(step3_model)
 if not os.path.exists(step4_model):
     os.makedirs(step4_model)
+
+if os.path.exists(step1_log):
+    os.system("rm {}/*".format(step1_log))
+if os.path.exists(step2_log):
+    os.system("rm {}/*".format(step2_log))
+if os.path.exists(step3_log):
+    os.system("rm {}/*".format(step3_log))
+if os.path.exists(step4_log):
+    os.system("rm {}/*".format(step4_log))
 
 
 mnist_autoencoder = Autoencoder(name="source")
@@ -44,31 +58,29 @@ mnist_data = MNISTDataset(batch_size=batch_size, sess=domain_adaptation.sess)
 mnist_data.sample_dataset(2000)
 usps_data.sample_dataset(1800)
 
-r_1_fc = 10000
-r_2_rec = 10000
-r_3_df = 1000
+r_1_fc = 5000
+r_2_rec = 5000
+r_3_df = 5000
 r_4_di = 10
 current_step = 0
 
- 
- 
-# for step in (range(r_1_fc)):
-#     if (step + 1) % save_iter == 0:
-#         save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(step)))
-#     batch_img, batch_label = mnist_data.next_batch()
-#     batch_target, label_target = usps_data.next_batch()
-#     domain_adaptation.run_step1(batch_img, batch_target, batch_label,  step + current_step)
+
+domain_adaptation.set_logdir(step1_log)
+for step in (range(r_1_fc)):
+    if (step + 1) % save_iter == 0:
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(step)))
+    batch_img, batch_label = mnist_data.next_batch()
+    batch_target, label_target = usps_data.next_batch()
+    domain_adaptation.run_step1(batch_img, batch_target, batch_label,  step + current_step)
 current_step += r_1_fc
 
-# save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
+save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
+# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(r_1_fc)))
 
-saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(r_1_fc)))
-
+domain_adaptation.set_logdir(step2_log)
 for step in (range(r_2_rec)):
-
     if (step + 1) % save_iter == 0:
         save_path = saver.save(domain_adaptation.sess, os.path.join(step2_model, "model_step2_{}.ckpt".format(step)))
-
     batch_img, batch_label = mnist_data.next_batch()
     batch_target, label_target = usps_data.next_batch()
     domain_adaptation.run_step2(batch_img, batch_target, batch_label,  step + current_step)

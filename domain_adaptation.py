@@ -208,7 +208,9 @@ class DomainAdaptation:
         self.sess.run(init)
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
-        
+    def set_logdir(self, logdir):
+        self.logdir = logdir
+        self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
     def _feed_dict(self, batch_source, batch_target, source_label=[]):
         spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
         spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
