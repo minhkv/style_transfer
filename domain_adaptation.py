@@ -130,8 +130,9 @@ class DomainAdaptation:
         with tf.variable_scope("loss_feature_classifier"):
             # Feature classification loss
             self.loss_feature_classifier = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.predict_source_common, labels=self.source_label), name="loss_feature_classifier")
-            self.feature_classifier_accuracy = tf.metrics.accuracy(labels=tf.argmax(self.source_label, 1), predictions=tf.argmax(self.predict_source_common, 1))
-            # print(tf.argmax(self.source_label, 1))
+            correct_prediction = tf.equal(tf.argmax(self.source_label, 1), tf.argmax(self.predict_source_common, 1))
+            self.feature_classifier_accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+            
         with tf.variable_scope("loss_entropy"):
             print(self.image_discriminator_source.logits_fake)
             loss_entropy_gs = entropy_function(self.image_discriminator_source.logits_fake)
@@ -203,7 +204,7 @@ class DomainAdaptation:
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
         tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
         tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
-        tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy[1])
+        tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
         
     def merge_all(self):
         init = tf.global_variables_initializer()

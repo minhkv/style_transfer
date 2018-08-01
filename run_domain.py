@@ -58,13 +58,13 @@ mnist_data = MNISTDataset(batch_size=batch_size, sess=domain_adaptation.sess)
 mnist_data.sample_dataset(2000)
 usps_data.sample_dataset(1800)
 
-r_1_fc = 8000
-r_2_rec = 2000
+r_1_fc = 10000
+r_2_rec = 10000
 r_3_df = 2
 r_4_di = 10
-current_step = 2000
+current_step = 0
 
-saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(1999)))
+# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(1999)))
 
 domain_adaptation.set_logdir(step1_log)
 for step in (range(r_1_fc)):
