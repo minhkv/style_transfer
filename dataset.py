@@ -33,7 +33,8 @@ class Dataset:
         self.dataset = self.dataset.shuffle(buffer_size=10000)
         self.iter = self.dataset.make_one_shot_iterator()
         self.el = self.iter.get_next()
-        
+    def get_all_label(self):
+        return self.y_tr
     def next_batch(self):
         data, label = self.sess.run(self.el)
         data = self._resize_batch(data)
