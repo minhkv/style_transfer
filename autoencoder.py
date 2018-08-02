@@ -33,15 +33,15 @@ class Autoencoder:
         # C3: 128 x 6 x 6   -> 256 x 2 x 2 
         # S3: 256 x 2 x 2   -> 256 x 1 x 1
         # with tf.variable_scope("encoder_{}".format(self.name), reuse=tf.AUTO_REUSE):
-        net = lays.conv2d(inputs, 64, [5, 5], strides=1, padding='SAME', activation=tf.nn.relu, name="C1")
+        net = lays.conv2d(inputs, 64, [5, 5], strides=1, padding='SAME', activation=tf.nn.relu, name="C1", kernel_initializer=tf.truncated_normal_initializer(stddev=0.02))
         net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S1")
         
-        net = lays.conv2d(net, 128, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="C2")
+        net = lays.conv2d(net, 128, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="C2", kernel_initializer=tf.truncated_normal_initializer(stddev=0.02))
         net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S2")
         
-        net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="C3")
+        net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="C3", kernel_initializer=tf.truncated_normal_initializer(stddev=0.02))
         net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S3")
-        net = lays.dense(net, 256)
+        # net = lays.dense(net, 256)
         return net
 
     def decoder(self, latent):
@@ -58,15 +58,23 @@ class Autoencoder:
         # output: 128 x 32 x 32 -> 1 x 32 x 32
         # with tf.variable_scope("decoder_{}".format(self.name), reuse=tf.AUTO_REUSE):
         net = tf.image.resize_images(images=latent, size=[2, 2]) 
-        net = lays.conv2d_transpose(net, 512, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="D3", reuse=tf.AUTO_REUSE)
+        net = lays.conv2d_transpose(net, 512, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="D3", 
+            kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
+            bias_initializer=tf.constant_initializer(0.1))
         
         net = tf.image.resize_images(images=net, size=[12, 12]) 
-        net = lays.conv2d_transpose(net, 256, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="D2")
+        net = lays.conv2d_transpose(net, 256, [5, 5], strides=1, padding='VALID', activation=tf.nn.relu, name="D2", 
+            kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
+            bias_initializer=tf.constant_initializer(0.1))
         
         net = tf.image.resize_images(images=net, size=[32, 32]) 
-        net = lays.conv2d_transpose(net, 128, [5, 5], strides=1, padding='SAME', activation=tf.nn.relu, name="D1")
-        
-        net = lays.conv2d_transpose(net, 1, [5, 5], strides=1, padding='SAME', activation=tf.nn.sigmoid, name="output")
+        net = lays.conv2d_transpose(net, 128, [5, 5], strides=1, padding='SAME', activation=tf.nn.relu, name="D1", 
+            kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
+            bias_initializer=tf.constant_initializer(0.1))
+        self.endpoints['D1'] = net
+        net = lays.conv2d_transpose(net, 1, [5, 5], strides=1, padding='SAME', activation=tf.nn.sigmoid, name="output", 
+            kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
+            bias_initializer=tf.constant_initializer(0.1))
         
         return net
 

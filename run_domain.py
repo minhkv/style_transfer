@@ -62,22 +62,22 @@ r_1_fc = 10000
 r_2_rec = 10000
 r_3_df = 2
 r_4_di = 10
-current_step = 0
+current_step = 10000
 
-# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(1999)))
+# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
 
-domain_adaptation.set_logdir(step1_log)
-for step in (range(r_1_fc)):
-    if (step + 1) % save_iter == 0:
-        save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(step)))
-    batch_img, batch_label = mnist_data.next_batch()
-    batch_target, label_target = usps_data.next_batch()
-    domain_adaptation.run_step1(batch_img, batch_target, batch_label,  step + current_step)
+# domain_adaptation.set_logdir(step1_log)
+# for step in (range(r_1_fc)):
+#     if (step + 1) % save_iter == 0:
+#         save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(step)))
+#     batch_img, batch_label = mnist_data.next_batch()
+#     batch_target, label_target = usps_data.next_batch()
+#     domain_adaptation.run_step1(batch_img, batch_target, batch_label,  step + current_step)
     
-current_step += r_1_fc
-save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
+# current_step += r_1_fc
+# save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
 
-# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(1999)))
+saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(9999)))
 
 domain_adaptation.set_logdir(step2_log)
 for step in (range(r_2_rec)):

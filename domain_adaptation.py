@@ -23,9 +23,9 @@ class DomainAdaptation:
         self._construct_summary()
         
     def feature_classifier(self, inputs):
-        net = lays.dense(inputs, 128, activation=tf.nn.relu)
-        net = lays.dense(net, 128, activation=tf.nn.relu)
-        net = lays.dense(net, 10, activation=tf.nn.relu)
+        net = lays.dense(inputs, 128, activation=tf.nn.relu, kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), bias_initializer=tf.constant_initializer(0.1))
+        net = lays.dense(net, 128, activation=tf.nn.relu, kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), bias_initializer=tf.constant_initializer(0.1))
+        net = lays.dense(net, 10, activation=tf.nn.relu, kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), bias_initializer=tf.constant_initializer(0.1))
         return net
     
     def _construct_graph(self):
@@ -111,17 +111,17 @@ class DomainAdaptation:
         
     def _construct_loss(self):
         # Construct feedback
-        self.feedback_loss_source, self.feedback_loss_style_source = self._construct_feedback_loss(
-            self.img_spe_source_com_target, 
-            self.source_specific_latent, 
-            self.target_common_latent,
-            self.source_autoencoder)
+        # self.feedback_loss_source, self.feedback_loss_style_source = self._construct_feedback_loss(
+        #     self.img_spe_source_com_target, 
+        #     self.source_specific_latent, 
+        #     self.target_common_latent,
+        #     self.source_autoencoder)
             
-        self.feedback_loss_target, self.feedback_loss_style_target = self._construct_feedback_loss(
-            self.img_spe_target_com_source, 
-            self.target_specific_latent, 
-            self.source_common_latent,
-            self.target_autoencoder)
+        # self.feedback_loss_target, self.feedback_loss_style_target = self._construct_feedback_loss(
+        #     self.img_spe_target_com_source, 
+        #     self.target_specific_latent, 
+        #     self.source_common_latent,
+        #     self.target_autoencoder)
 
         with tf.variable_scope("loss_autoencoder_{}".format(self.source_autoencoder.name)) as scope:
             with tf.name_scope(scope.original_name_scope):
@@ -152,7 +152,7 @@ class DomainAdaptation:
         with tf.name_scope("Step2"):
             self.loss_step2 = self.loss_feature_classifier + self.source_autoencoder.loss + self.loss_reconstruct_source_img_target
             var_step2 = self.vars_feature_classifier + self.vars_encoder_source + self.vars_decoder_source
-            self.optimizer_step2 = tf.train.AdagradOptimizer(learning_rate=0.01, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
+            self.optimizer_step2 = tf.train.AdagradOptimizer(learning_rate=0.001, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
             
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
@@ -202,8 +202,8 @@ class DomainAdaptation:
         tf.summary.image("reconstruct_target_data", self.reconstruct_source_target_data, 3)
         tf.summary.scalar("feature_classifier_loss", self.loss_feature_classifier)
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
-        tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
-        tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
+        # tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
+        # tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
         tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
         
     def merge_all(self):
@@ -242,6 +242,21 @@ class DomainAdaptation:
             [self.merged, self.loss_step1, self.optimizer_step1, self.predict_source_common],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
+        d1_source, d1_target, rec_source, rec_target = self.sess.run(
+            [self.source_autoencoder.endpoints['D1'], self.target_autoencoder.endpoints['D1'], self.source_autoencoder.ae_outputs, self.target_autoencoder.ae_outputs],
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+        )
+        print("Min d1 source: ", d1_source.min())
+        print("Max d1 source: ", d1_source.max())
+
+        print("Min d1 target: ", d1_target.min())
+        print("Max d1 target: ", d1_target.max())
+
+        print("Min source: ", rec_source.min())
+        print("Max source: ", rec_source.max())
+        print("Min target: ", rec_target.min())
+        print("Max target: ", rec_target.max())
+
         print("FC Accuracy: {}".format(accuracy_score(source_label, np.argmax(pred_fc, 1))))
         print("Iter {}: loss step1: {:.4f}".format(step, loss))
         self.train_writer.add_summary(summary, step)
@@ -251,6 +266,22 @@ class DomainAdaptation:
             [self.merged, self.loss_step2, self.optimizer_step2],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
+
+        d1_source, d1_target, rec_source, rec_target = self.sess.run(
+            [self.source_autoencoder.endpoints['D1'], self.target_autoencoder.endpoints['D1'], self.source_autoencoder.ae_outputs, self.target_autoencoder.ae_outputs],
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+        )
+        print("Min d1 source: ", d1_source.min())
+        print("Max d1 source: ", d1_source.max())
+
+        print("Min d1 target: ", d1_target.min())
+        print("Max d1 target: ", d1_target.max())
+
+        print("Min source: ", rec_source.min())
+        print("Max source: ", rec_source.max())
+        print("Min target: ", rec_target.min())
+        print("Max target: ", rec_target.max())
+
         print("Iter {}: loss step2: {:.4f}".format(step, loss_1))
         self.train_writer.add_summary(summary, step)
     
