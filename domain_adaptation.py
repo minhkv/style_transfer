@@ -152,7 +152,7 @@ class DomainAdaptation:
         with tf.name_scope("Step2"):
             self.loss_step2 = self.loss_feature_classifier + self.source_autoencoder.loss + self.loss_reconstruct_source_img_target
             var_step2 = self.vars_feature_classifier + self.vars_encoder_source + self.vars_decoder_source
-            self.optimizer_step2 = tf.train.AdagradOptimizer(learning_rate=0.001, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
+            self.optimizer_step2 = tf.train.AdagradOptimizer(learning_rate=0.01, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
             
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
