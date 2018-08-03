@@ -8,6 +8,13 @@ from sklearn.metrics import accuracy_score
 lays = tf.layers
 def entropy_function(pk):
     return -pk * tf.log(pk)
+def one_hot_encoding(labels, depth=10):
+    one_hot_labels = np.zeros((len(labels), depth))
+    for o, l in zip(one_hot_labels, labels):
+        if l >= depth:
+            print("[Error] Label larger than depth")
+        o[l] = 1
+    return one_hot_labels
 
 class DomainAdaptation:
     def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log", batch_size=100):
@@ -212,7 +219,6 @@ class DomainAdaptation:
         tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
         
     def merge_all(self):
-        init = tf.global_variables_initializer()
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
         init_g = tf.global_variables_initializer()
@@ -226,12 +232,11 @@ class DomainAdaptation:
         self.logdir = logdir
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
     def _feed_dict(self, batch_source, batch_target, source_label=[]):
-        spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
-        spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
-        s_label = np.ones((batch_source.shape[0], 10))
+        # spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
+        # spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
         
-        if source_label != []:
-            s_label = self.sess.run(tf.one_hot(source_label, depth=10))
+        # s_label = self.sess.run(tf.one_hot(source_label, depth=10))
+        s_label = one_hot_encoding(source_label, depth=10)
         return {
             # self.source_specific_latent: spe_source, 
             # self.source_common_latent: com_source,

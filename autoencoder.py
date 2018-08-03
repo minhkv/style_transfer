@@ -76,6 +76,7 @@ class Autoencoder:
             net = lays.conv2d_transpose(net, 256, [5, 5], strides=1, padding='VALID', 
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                 bias_initializer=tf.constant_initializer(0.1))
+            net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
         net = tf.image.resize_images(images=net, size=[32, 32]) 
         
