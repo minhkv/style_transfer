@@ -94,9 +94,6 @@ class Autoencoder:
             net = tf.nn.sigmoid(net)
         return net
     
-    
-    
-
     def _create_from_graph(self, meta_graph, checkpoint_dir):
         print("[LOG] Construct from graph")
         self.sess = tf.Session()

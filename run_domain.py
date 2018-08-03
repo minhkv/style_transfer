@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from autoencoder import *
 from feature_discriminator import *
 from domain_adaptation import *
-from utils import *
 from usps import *
 from mnist import *
 
@@ -58,8 +57,8 @@ mnist_data = MNISTDataset(batch_size=batch_size, sess=domain_adaptation.sess)
 mnist_data.sample_dataset(2000)
 usps_data.sample_dataset(1800)
 
-r_1_fc = 1000
-r_2_rec = 1000
+r_1_fc = 5000
+r_2_rec = 5000
 r_3_df = 2
 r_4_di = 10
 current_step = 0

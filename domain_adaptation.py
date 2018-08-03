@@ -10,13 +10,14 @@ def entropy_function(pk):
     return -pk * tf.log(pk)
 
 class DomainAdaptation:
-    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log"):
+    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log", batch_size=100):
         self.source_autoencoder = source_autoencoder
         self.target_autoencoder = target_autoencoder
         
         self.lr = lr
         self.name = name
         self.logdir = logdir
+        self.batch_size = batch_size
         self._construct_graph()
         self._construct_loss()
         self._construct_optimizer()
@@ -32,12 +33,16 @@ class DomainAdaptation:
 
         # Exchange feature
         with tf.variable_scope("feature_exchange_to_source"):
-            self.source_specific_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="source_specific_latent_{}".format(self.name))
-            self.target_common_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="target_common_latent_{}".format(self.name))
+            # self.source_specific_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="source_specific_latent_{}".format(self.name))
+            # self.target_common_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="target_common_latent_{}".format(self.name))
+            self.source_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_specific_latent_{}".format(self.name))
+            self.target_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_common_latent_{}".format(self.name))
             spe_source_com_target = tf.concat([self.source_specific_latent, self.target_common_latent], 3)
         with tf.variable_scope("feature_exchange_to_target"):
-            self.target_specific_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="target_specific_latent_{}".format(self.name))
-            self.source_common_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="source_common_latent_{}".format(self.name))
+            # self.target_specific_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="target_specific_latent_{}".format(self.name))
+            # self.source_common_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="source_common_latent_{}".format(self.name))
+            self.target_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_specific_latent_{}".format(self.name))
+            self.source_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_common_latent_{}".format(self.name))
             spe_target_com_source = tf.concat([self.target_specific_latent, self.source_common_latent], 3)
         with tf.variable_scope("source_label"):
             self.source_label = tf.placeholder(tf.float32, (None, 10), name="source_label_{}".format(self.name)) 
@@ -228,36 +233,21 @@ class DomainAdaptation:
         if source_label != []:
             s_label = self.sess.run(tf.one_hot(source_label, depth=10))
         return {
-            self.source_specific_latent: spe_source, 
-            self.source_common_latent: com_source,
-            self.target_specific_latent: spe_target, 
-            self.target_common_latent: com_target, 
+            # self.source_specific_latent: spe_source, 
+            # self.source_common_latent: com_source,
+            # self.target_specific_latent: spe_target, 
+            # self.target_common_latent: com_target, 
             self.source_autoencoder.ae_inputs: batch_source, 
             self.target_autoencoder.ae_inputs: batch_target,
             self.source_label: s_label
         }
     
     def run_step1(self, batch_source, batch_target, source_label, step):
-        summary, loss, _, pred_fc = self.sess.run(
-            [self.merged, self.loss_step1, self.optimizer_step1, self.predict_source_common],
+        summary, loss, _ = self.sess.run(
+            [self.merged, self.loss_step1, self.optimizer_step1],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
-        d1_source, d1_target, rec_source, rec_target = self.sess.run(
-            [self.source_autoencoder.endpoints['D1'], self.target_autoencoder.endpoints['D1'], self.source_autoencoder.ae_outputs, self.target_autoencoder.ae_outputs],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
-        )
-        print("Min d1 source: ", d1_source.min())
-        print("Max d1 source: ", d1_source.max())
 
-        print("Min d1 target: ", d1_target.min())
-        print("Max d1 target: ", d1_target.max())
-
-        print("Min source: ", rec_source.min())
-        print("Max source: ", rec_source.max())
-        print("Min target: ", rec_target.min())
-        print("Max target: ", rec_target.max())
-
-        print("FC Accuracy: {}".format(accuracy_score(source_label, np.argmax(pred_fc, 1))))
         print("Iter {}: loss step1: {:.4f}".format(step, loss))
         self.train_writer.add_summary(summary, step)
         
@@ -266,21 +256,6 @@ class DomainAdaptation:
             [self.merged, self.loss_step2, self.optimizer_step2],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
-
-        d1_source, d1_target, rec_source, rec_target = self.sess.run(
-            [self.source_autoencoder.endpoints['D1'], self.target_autoencoder.endpoints['D1'], self.source_autoencoder.ae_outputs, self.target_autoencoder.ae_outputs],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
-        )
-        print("Min d1 source: ", d1_source.min())
-        print("Max d1 source: ", d1_source.max())
-
-        print("Min d1 target: ", d1_target.min())
-        print("Max d1 target: ", d1_target.max())
-
-        print("Min source: ", rec_source.min())
-        print("Max source: ", rec_source.max())
-        print("Min target: ", rec_target.min())
-        print("Max target: ", rec_target.max())
 
         print("Iter {}: loss step2: {:.4f}".format(step, loss_1))
         self.train_writer.add_summary(summary, step)
