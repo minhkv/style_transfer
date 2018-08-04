@@ -33,6 +33,8 @@ class Dataset:
         self.dataset = self.dataset.shuffle(buffer_size=10000)
         self.iter = self.dataset.make_one_shot_iterator()
         self.el = self.iter.get_next()
+    def one_hot_encoding_label(self):
+        self.y_tr = self.sess.run(tf.one_hot(self.y_tr, depth=10))
     def get_all_label(self):
         return self.y_tr
     def next_batch(self):

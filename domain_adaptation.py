@@ -165,12 +165,12 @@ class DomainAdaptation:
         with tf.name_scope("Step1"):
             self.loss_step1 = self.loss_feature_classifier
             var_step1 = self.vars_encoder_source + self.vars_feature_classifier
-            self.optimizer_step1 = tf.train.AdagradOptimizer(learning_rate=0.01, name="optimize_1").minimize(self.loss_step1, var_list=var_step1)
+            self.optimizer_step1 = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_1").minimize(self.loss_step1, var_list=var_step1)
             
         with tf.name_scope("Step2"):
             self.loss_step2 = self.loss_feature_classifier + self.source_autoencoder.loss + self.loss_reconstruct_source_img_target
             var_step2 = self.vars_feature_classifier + self.vars_encoder_source + self.vars_decoder_source
-            self.optimizer_step2 = tf.train.AdagradOptimizer(learning_rate=0.01, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
+            self.optimizer_step2 = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
             
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
@@ -178,11 +178,11 @@ class DomainAdaptation:
             
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
             varlist_d = self.feature_discriminator.vars_d
-            self.optimizer_step3_g = tf.train.AdagradOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
-            self.optimizer_step3_d = tf.train.AdagradOptimizer(learning_rate=0.001, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
+            self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
+            self.optimizer_step3_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
         with tf.name_scope("Step4"):
             self.loss_step4 = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
-            self.optimizer_step4 = tf.train.AdagradOptimizer(learning_rate=self.lr, name="semantic_optimize").minimize(self.loss_step4)
+            self.optimizer_step4 = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="semantic_optimize").minimize(self.loss_step4)
     def duplicate_source_ae_to_target_ae(self):
         print("[Info] Duplicate source ae to target ae")
         vars_source = self.vars_encoder_source + self.vars_decoder_source
@@ -191,8 +191,12 @@ class DomainAdaptation:
             self.sess.run(v_t.assign(v_s))
     def collect_feature(self, batch_source, batch_target, source_label, step):
         spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
+        spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
         self.feature = np.concatenate((self.feature, com_source), axis=0)
-        self.meta_data = np.concatenate((self.meta_data, source_label))
+        self.meta_data = np.concatenate((self.meta_data, np.zeros(len(com_source))))
+
+        self.feature = np.concatenate((self.feature, com_target), axis=0)
+        self.meta_data = np.concatenate((self.meta_data, np.ones(len(com_target))))
         print(len(self.feature))
 
     def visualize_feature(self):
@@ -274,12 +278,13 @@ class DomainAdaptation:
         self.logdir = logdir
         self.embedding_dir = os.path.join(self.logdir, 'common')
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
-    def _feed_dict(self, batch_source, batch_target, source_label=[]):
+    def _feed_dict(self, batch_source, batch_target, source_label):
         # spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
         # spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
         
+        # s_label = one_hot_encoding(source_label, depth=10)
         # s_label = self.sess.run(tf.one_hot(source_label, depth=10))
-        s_label = one_hot_encoding(source_label, depth=10)
+        s_label = source_label
         return {
             # self.source_specific_latent: spe_source, 
             # self.source_common_latent: com_source,

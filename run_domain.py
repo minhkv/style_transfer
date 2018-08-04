@@ -57,6 +57,8 @@ mnist_data = MNISTDataset(batch_size=batch_size, sess=domain_adaptation.sess)
 mnist_data.sample_dataset(2000)
 usps_data.sample_dataset(1800)
 
+# mnist_data.one_hot_encoding_label()
+
 r_1_fc = 5000
 r_2_rec = 5000
 r_3_df = 2

@@ -50,6 +50,7 @@ usps_data.sample_dataset(1800)
 
 domain_adaptation.set_logdir(step1_log)
 saver.restore(domain_adaptation.sess, os.path.join(model_folder, "/home/acm528/Minh/style_transfer/model/test_acc/step2/model_step2_10000.ckpt"))
+domain_adaptation.duplicate_source_ae_to_target_ae()
 for i in range(20):
     batch_img, batch_label = mnist_data.next_batch()
     batch_target, label_target = usps_data.next_batch()
