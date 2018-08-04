@@ -174,10 +174,10 @@ class DomainAdaptation:
             
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
-            self.loss_step3_d = self.feature_discriminator.total_loss_d #+ self.feature_discriminator.class_loss
+            self.loss_step3_d = self.feature_discriminator.total_loss_d + 10 * self.loss_feature_classifier
             
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
-            varlist_d = self.feature_discriminator.vars_d
+            varlist_d = self.feature_discriminator.vars_d + self.vars_feature_classifier
             self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
             self.optimizer_step3_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
         with tf.name_scope("Step4"):
@@ -192,9 +192,13 @@ class DomainAdaptation:
     def collect_feature(self, batch_source, batch_target, source_label, step):
         spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
         spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
+        self.feature = np.concatenate((self.feature, spe_source), axis=0)
+        self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_source))))
         self.feature = np.concatenate((self.feature, com_source), axis=0)
         self.meta_data = np.concatenate((self.meta_data, np.zeros(len(com_source))))
 
+        self.feature = np.concatenate((self.feature, spe_target), axis=0)
+        self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_target))))
         self.feature = np.concatenate((self.feature, com_target), axis=0)
         self.meta_data = np.concatenate((self.meta_data, np.ones(len(com_target))))
         print(len(self.feature))
@@ -320,8 +324,8 @@ class DomainAdaptation:
         #         feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         #     )
         # for i in range(1):
-        loss_g, loss_d, _ = self.sess.run(
-            [self.loss_step3_g, self.loss_step3_d, self.optimizer_step3_d],
+        loss_g, loss_d, _, _ = self.sess.run(
+            [self.loss_step3_g, self.loss_step3_d, self.optimizer_step3_g, self.optimizer_step3_d],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
             
