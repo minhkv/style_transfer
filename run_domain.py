@@ -97,7 +97,7 @@ domain_adaptation.duplicate_source_ae_to_target_ae()
 domain_adaptation.set_logdir(step3_log)
 for step in (range(r_3_df)):
     if (step + 1) % save_iter == 0:
-        save_path = saver.save(domain_adaptation.sess, os.path.join(step2_model, "model_step3_{}.ckpt".format(step + current_step)))
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step3_model, "model_step3_{}.ckpt".format(step + current_step)))
     batch_img, batch_label = mnist_data.next_batch()
     batch_target, label_target = usps_data.next_batch()
     domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
