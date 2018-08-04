@@ -2,9 +2,11 @@ import tensorflow as tf
 # import tensorflow.layers as lays
 import numpy as np
 import scipy
+import os
 from feature_discriminator import *
 from image_discriminator import *
 from sklearn.metrics import accuracy_score
+from tensorflow.contrib.tensorboard.plugins import projector
 lays = tf.layers
 def entropy_function(pk):
     return -pk * tf.log(pk)
@@ -17,7 +19,7 @@ def one_hot_encoding(labels, depth=10):
     return one_hot_labels
 
 class DomainAdaptation:
-    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log", batch_size=100):
+    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log", batch_size=100, gpu_fraction=0.4):
         self.source_autoencoder = source_autoencoder
         self.target_autoencoder = target_autoencoder
         
@@ -25,6 +27,10 @@ class DomainAdaptation:
         self.name = name
         self.logdir = logdir
         self.batch_size = batch_size
+        self.gpu_fraction = gpu_fraction
+        self.feature = np.zeros((0, 1, 1, 128))
+        self.meta_data = []
+        self.embedding_dir = os.path.join(self.logdir, 'common')
         self._construct_graph()
         self._construct_loss()
         self._construct_optimizer()
@@ -183,11 +189,47 @@ class DomainAdaptation:
         vars_target = self.vars_encoder_target + self.vars_decoder_target
         for v_s, v_t in zip(vars_source, vars_target):
             self.sess.run(v_t.assign(v_s))
+    def collect_feature(self, batch_source, batch_target, source_label, step):
+        spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
+        self.feature = np.concatenate((self.feature, com_source), axis=0)
+        self.meta_data = np.concatenate((self.meta_data, source_label))
+        print(len(self.feature))
+
+    def visualize_feature(self):
+        embedding_var = tf.Variable(tf.zeros([len(self.feature),128], dtype=tf.float64), name="tsne")
+        meta_file = os.path.join(self.embedding_dir, 'meta.csv')
+
+        if not os.path.exists(self.embedding_dir):
+            os.system("mkdir -p {}".format(self.embedding_dir))
+        print(self.embedding_dir)
+        with open(meta_file, "w") as f:
+            for l in self.meta_data:
+                f.write("{}\n".format(l))
+
+        # Create summary writer.
+        writer = tf.summary.FileWriter(self.embedding_dir, self.sess.graph)
+        # Initialize embedding_var
+        assign_op = tf.assign(embedding_var, tf.reshape(self.feature, (-1, 128)))
+        self.sess.run(assign_op)
+
+        config = projector.ProjectorConfig()
+        # Add embedding visualizer
+        embedding = config.embeddings.add()
+        # Attache the name 'embedding'
+        embedding.tensor_name = embedding_var.name
+        # Metafile which is described later
+        embedding.metadata_path = 'meta.csv'
+        # Add writer and config to Projector
+        projector.visualize_embeddings(writer, config)
+        # Save the model
+        saver_embed = tf.train.Saver([embedding_var])
+        saver_embed.save(self.sess, os.path.join(self.embedding_dir, 'embedding.ckpt'), 1)
+        writer.close()
         
     def _construct_optimizer(self):
         pass
         
-        
+    
     def _construct_feedback_loss(self, gen_img, spe_latent, com_latent, autoencoder):
         print("[Info] Construct feedback {}".format(autoencoder.name))
         with tf.variable_scope(autoencoder.encoder_scope, reuse=tf.AUTO_REUSE) as scope:
@@ -219,7 +261,7 @@ class DomainAdaptation:
         tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
         
     def merge_all(self):
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=self.gpu_fraction)
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
         init_g = tf.global_variables_initializer()
         init_l = tf.local_variables_initializer()
@@ -230,6 +272,7 @@ class DomainAdaptation:
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
     def set_logdir(self, logdir):
         self.logdir = logdir
+        self.embedding_dir = os.path.join(self.logdir, 'common')
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
     def _feed_dict(self, batch_source, batch_target, source_label=[]):
         # spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)

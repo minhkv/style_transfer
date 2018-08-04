@@ -76,7 +76,7 @@ for step in (range(r_1_fc)):
 current_step += r_1_fc
 save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
 
-# saver.restore(domain_adaptation.sess, os.path.join(step2_model, "model_step2_{}.ckpt".format(3999)))
+# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(4999)))
 
 domain_adaptation.set_logdir(step2_log)
 for step in (range(r_2_rec)):
