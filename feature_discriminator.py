@@ -80,7 +80,7 @@ class FeatureDiscriminator(Discriminator):
                 self.class_acc_source = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
             with tf.name_scope("total"):
-                self.total_loss_g = self.loss_g_feature + self.class_loss
+                self.total_loss_g = self.loss_g_feature #+ self.class_loss 
                 self.total_loss_d = self.loss_d_feature + self.class_loss
             self.vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
 

@@ -50,19 +50,21 @@ domain_adaptation = DomainAdaptation(mnist_autoencoder, usps_autoencoder)
 domain_adaptation.merge_all()
 
 
-variable_not_restored = [var for var in tf.trainable_variables() 
-    if var.name.startswith('discriminator_{}'.format(domain_adaptation.feature_discriminator.name)) 
-    and 'BatchNorm' in str(var.name)
-    ]
-variable_not_restored += [var for var in tf.trainable_variables() 
-    if var.name.startswith('feature_classifier_{}'.format(domain_adaptation.name)) 
-    and 'BatchNorm' in str(var.name)
-    ]
-# variable_not_restored = []
-variable_to_restore = [var for var in tf.trainable_variables()
-    if var not in variable_not_restored]
+# variable_not_restored = [var for var in tf.trainable_variables() 
+#     if var.name.startswith('discriminator_{}'.format(domain_adaptation.feature_discriminator.name)) 
+#     and 'BatchNorm' in str(var.name)
+#     ]
+# variable_not_restored += [var for var in tf.trainable_variables() 
+#     if var.name.startswith('feature_classifier_{}'.format(domain_adaptation.name)) 
+#     and 'BatchNorm' in str(var.name)
+#     ]
+# # variable_not_restored = []
+# variable_to_restore = [var for var in tf.trainable_variables()
+#     if var not in variable_not_restored]
 
-saver = tf.train.Saver(var_list=variable_to_restore)
+# saver = tf.train.Saver(var_list=variable_to_restore)
+
+saver = tf.train.Saver(max_to_keep=100)
 
 batch_size = 100  # Number of samples in each batch
 usps_data = USPSDataset(batch_size=batch_size, sess=domain_adaptation.sess)
@@ -77,7 +79,7 @@ r_1_fc = 5000
 r_2_rec = 5000
 r_3_df = 10000
 r_4_di = 10
-current_step = 10000
+current_step = 40000
 
 # # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
 
@@ -92,7 +94,7 @@ current_step = 10000
 # current_step += r_1_fc
 # save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
 
-# # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(4999)))
+# # # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(4999)))
 
 # domain_adaptation.set_logdir(step2_log)
 # for step in (range(r_2_rec)):
@@ -105,9 +107,11 @@ current_step = 10000
 
 # save_path = saver.save(domain_adaptation.sess, os.path.join(step2_model, "model_step2_{}.ckpt".format(current_step)))
 
-saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/test_acc/step2/model_step2_10000.ckpt")
+saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/rerun/step3/model_step3_39999.ckpt")
 # domain_adaptation.duplicate_source_ae_to_target_ae()
-saver = tf.train.Saver()
+
+# saver = tf.train.Saver()
+
 domain_adaptation.set_logdir(step3_log)
 for step in (range(r_3_df)):
     if (step + 1) % save_iter == 0:

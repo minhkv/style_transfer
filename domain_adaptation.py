@@ -192,8 +192,8 @@ class DomainAdaptation:
             
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
-            self.loss_step3_d = 10 * self.loss_feature_classifier + self.feature_discriminator.total_loss_d
-            
+            #self.loss_step3_d = 10 * self.loss_feature_classifier + self.feature_discriminator.total_loss_d
+            self.loss_step3_d = self.feature_discriminator.total_loss_d
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
             varlist_d = self.feature_discriminator.vars_d + self.vars_feature_classifier
             self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
