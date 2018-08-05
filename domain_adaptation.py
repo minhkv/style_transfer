@@ -7,6 +7,9 @@ from feature_discriminator import *
 from image_discriminator import *
 from sklearn.metrics import accuracy_score
 from tensorflow.contrib.tensorboard.plugins import projector
+from sklearn.manifold import TSNE
+from tsne_utils import *
+
 lays = tf.layers
 def entropy_function(pk):
     return -pk * tf.log(pk)
@@ -37,9 +40,25 @@ class DomainAdaptation:
         self._construct_summary()
         
     def feature_classifier(self, inputs):
-        net = lays.dense(inputs, 128, activation=tf.nn.relu, kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), bias_initializer=tf.constant_initializer(0.1))
-        net = lays.dense(net, 128, activation=tf.nn.relu, kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), bias_initializer=tf.constant_initializer(0.1))
-        net = lays.dense(net, 10, activation=tf.nn.relu, kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), bias_initializer=tf.constant_initializer(0.1))
+        with tf.name_scope("F1"):
+            net = lays.dense(inputs, 128, 
+                kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 
+                bias_initializer=tf.constant_initializer(0.1))
+            net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
+            net = tf.nn.relu(net)
+        tf.summary.histogram("F1_ac_fc", net)
+        with tf.name_scope("F1"):
+            net = lays.dense(net, 128, 
+                kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 
+                bias_initializer=tf.constant_initializer(0.1))
+            net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
+            net = tf.nn.relu(net)
+        tf.summary.histogram("F2_ac_fc", net)
+        with tf.name_scope("output"):
+            net = lays.dense(net, 10, 
+                kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 
+                bias_initializer=tf.constant_initializer(0.1))
+            net = tf.nn.relu(net)
         return net
     
     def _construct_graph(self):
@@ -152,7 +171,6 @@ class DomainAdaptation:
             self.feature_classifier_accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
             
         with tf.variable_scope("loss_entropy"):
-            print(self.image_discriminator_source.logits_fake)
             loss_entropy_gs = entropy_function(self.image_discriminator_source.logits_fake)
             loss_entropy_xt = entropy_function(self.image_discriminator_target.logits_real)
             loss_entropy_ct = entropy_function(self.feature_discriminator.logits_source)
@@ -174,7 +192,7 @@ class DomainAdaptation:
             
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
-            self.loss_step3_d = self.feature_discriminator.total_loss_d + 10 * self.loss_feature_classifier
+            self.loss_step3_d = 10 * self.loss_feature_classifier + self.feature_discriminator.total_loss_d
             
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
             varlist_d = self.feature_discriminator.vars_d + self.vars_feature_classifier
@@ -192,13 +210,13 @@ class DomainAdaptation:
     def collect_feature(self, batch_source, batch_target, source_label, step):
         spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
         spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
-        self.feature = np.concatenate((self.feature, spe_source), axis=0)
-        self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_source))))
+        # self.feature = np.concatenate((self.feature, spe_source), axis=0)
+        # self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_source))))
         self.feature = np.concatenate((self.feature, com_source), axis=0)
         self.meta_data = np.concatenate((self.meta_data, np.zeros(len(com_source))))
 
-        self.feature = np.concatenate((self.feature, spe_target), axis=0)
-        self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_target))))
+        # self.feature = np.concatenate((self.feature, spe_target), axis=0)
+        # self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_target))))
         self.feature = np.concatenate((self.feature, com_target), axis=0)
         self.meta_data = np.concatenate((self.meta_data, np.ones(len(com_target))))
         print(len(self.feature))
@@ -233,7 +251,14 @@ class DomainAdaptation:
         saver_embed = tf.train.Saver([embedding_var])
         saver_embed.save(self.sess, os.path.join(self.embedding_dir, 'embedding.ckpt'), 1)
         writer.close()
-        
+    def tsne_sklearn(self):
+        x = np.reshape(self.feature, (-1, 128))
+        X_embedded = TSNE(n_components=2, learning_rate=200, n_iter=5000).fit_transform(x)
+        # print(X_embedded.shape)
+        # print(np.array(self.meta_data).shape)
+        # X_embedded = np.reshape(X_embedded, (-1, 128))
+        plot_embedding(X_embedded, self.meta_data)
+        plt.savefig("tsne.png")
     def _construct_optimizer(self):
         pass
         
@@ -324,12 +349,12 @@ class DomainAdaptation:
         #         feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         #     )
         # for i in range(1):
-        loss_g, loss_d, _, _ = self.sess.run(
-            [self.loss_step3_g, self.loss_step3_d, self.optimizer_step3_g, self.optimizer_step3_d],
+        summary, loss_g, loss_d, _, _= self.sess.run(
+            [self.merged, self.loss_step3_g, self.loss_step3_d, self.optimizer_step3_g, self.optimizer_step3_d],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
-            
-        summary = self.sess.run(self.merged, feed_dict=self._feed_dict(batch_source, batch_target, source_label))
+        # print("Range F2: {} to {}".format(np.min(f2_df), np.max(f2_df)))
+        # summary = self.sess.run(self.merged, feed_dict=self._feed_dict(batch_source, batch_target, source_label))
         print("Iter {}: loss step3 g: {:.4f}, loss step3 d: {:.4f}".format(step, loss_g, loss_d))
         # print("\t Type pred source: {}".format(type_pred_source[:10]))
         self.train_writer.add_summary(summary, step)
