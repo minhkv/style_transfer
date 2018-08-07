@@ -199,26 +199,29 @@ class DomainAdaptation:
             self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
             self.optimizer_step3_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
         with tf.name_scope("Step4"):
-            self.loss_step4_g = 10 * self.loss_feature_classifier + 
-                self.source_autoencoder.loss + 
-                self.target_autoencoder.loss + 
-                self.feature_discriminator.total_loss_g +
-                self.image_discriminator_source.total_loss_g + 
+            self.loss_step4_g = 10 * self.loss_feature_classifier + \
+                self.source_autoencoder.loss + \
+                self.target_autoencoder.loss + \
+                self.feature_discriminator.total_loss_g + \
+                self.image_discriminator_source.total_loss_g + \
                 self.image_discriminator_target.total_loss_g
-            self.loss_step4_d = self.feature_discriminator.total_loss_d + 
-                self.image_discriminator_source.total_loss_d +
+            self.loss_step4_d = self.feature_discriminator.total_loss_d + \
+                self.image_discriminator_source.total_loss_d + \
                 self.image_discriminator_target.total_loss_d
-            varlist_g_4 = self.vars_feature_classifier + 
-                self.vars_encoder_source + 
-                self.vars_encoder_target + 
-                self.vars_decoder_source + 
+            varlist_g_4 = self.vars_feature_classifier + \
+                self.vars_encoder_source + \
+                self.vars_encoder_target + \
+                self.vars_decoder_source + \
                 self.vars_decoder_target 
-            varlist_d_4 = self.feature_discriminator.vars_d +
-                self.image_discriminator_source.vars_d +
+            varlist_d_4 = self.feature_discriminator.vars_d + \
+                self.image_discriminator_source.vars_d + \
                 self.image_discriminator_target.vars_d
                  #+ self.vars_feature_classifier
             self.optimizer_step4_g = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="optimize_4_g").minimize(self.loss_step4_g, var_list=varlist_g_4)
             self.optimizer_step4_d = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="optimize_4_d").minimize(self.loss_step4_d, var_list=varlist_d_4)
+
+        with tf.name_scope("Step5"):
+            pass
     def duplicate_source_ae_to_target_ae(self):
         print("[Info] Duplicate source ae to target ae")
         vars_source = self.vars_encoder_source + self.vars_decoder_source
