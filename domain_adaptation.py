@@ -199,8 +199,26 @@ class DomainAdaptation:
             self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
             self.optimizer_step3_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
         with tf.name_scope("Step4"):
-            self.loss_step4 = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
-            self.optimizer_step4 = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="semantic_optimize").minimize(self.loss_step4)
+            self.loss_step4_g = 10 * self.loss_feature_classifier + 
+                self.source_autoencoder.loss + 
+                self.target_autoencoder.loss + 
+                self.feature_discriminator.total_loss_g +
+                self.image_discriminator_source.total_loss_g + 
+                self.image_discriminator_target.total_loss_g
+            self.loss_step4_d = self.feature_discriminator.total_loss_d + 
+                self.image_discriminator_source.total_loss_d +
+                self.image_discriminator_target.total_loss_d
+            varlist_g_4 = self.vars_feature_classifier + 
+                self.vars_encoder_source + 
+                self.vars_encoder_target + 
+                self.vars_decoder_source + 
+                self.vars_decoder_target 
+            varlist_d_4 = self.feature_discriminator.vars_d +
+                self.image_discriminator_source.vars_d +
+                self.image_discriminator_target.vars_d
+                 #+ self.vars_feature_classifier
+            self.optimizer_step4_g = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="optimize_4_g").minimize(self.loss_step4_g, var_list=varlist_g_4)
+            self.optimizer_step4_d = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="optimize_4_d").minimize(self.loss_step4_d, var_list=varlist_d_4)
     def duplicate_source_ae_to_target_ae(self):
         print("[Info] Duplicate source ae to target ae")
         vars_source = self.vars_encoder_source + self.vars_decoder_source
@@ -356,7 +374,16 @@ class DomainAdaptation:
         # print("Range F2: {} to {}".format(np.min(f2_df), np.max(f2_df)))
         # summary = self.sess.run(self.merged, feed_dict=self._feed_dict(batch_source, batch_target, source_label))
         print("Iter {}: loss step3 g: {:.4f}, loss step3 d: {:.4f}".format(step, loss_g, loss_d))
-        # print("\t Type pred source: {}".format(type_pred_source[:10]))
+        self.train_writer.add_summary(summary, step)
+
+    def run_step4(self, batch_source, batch_target, source_label, step):
+        summary, loss_g, loss_d, _, _= self.sess.run(
+            [self.merged, self.loss_step4_g, self.loss_step4_d, self.optimizer_step4_g, self.optimizer_step4_d],
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+        )
+        # print("Range F2: {} to {}".format(np.min(f2_df), np.max(f2_df)))
+        # summary = self.sess.run(self.merged, feed_dict=self._feed_dict(batch_source, batch_target, source_label))
+        print("Iter {}: loss step4 g: {:.4f}, loss step4 d: {:.4f}".format(step, loss_g, loss_d))
         self.train_writer.add_summary(summary, step)
     
     

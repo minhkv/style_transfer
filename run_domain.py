@@ -121,8 +121,10 @@ for step in (range(r_3_df)):
     domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
 current_step += r_3_df
 
-# domain_adaptation.set_logdir(step4_log)
-# for step in (range(r_4_di)):
-#     batch_img, batch_label = mnist_data.next_batch_train()
-#     batch_target, label_target = usps_data.next_batch_train()
-#     domain_adaptation.run_step4(batch_img, batch_target, batch_label,  step + current_step)
+domain_adaptation.set_logdir(step4_log)
+for step in (range(r_4_di)):
+    if (step + 1) % save_iter == 0:
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step4_model, "model_step4_{}.ckpt".format(step + current_step)))
+    batch_img, batch_label = mnist_data.next_batch_train()
+    batch_target, label_target = usps_data.next_batch_train()
+    domain_adaptation.run_step4(batch_img, batch_target, batch_label,  step + current_step)
