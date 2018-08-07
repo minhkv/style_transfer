@@ -148,17 +148,17 @@ class DomainAdaptation:
         
     def _construct_loss(self):
         # Construct feedback
-        # self.feedback_loss_source, self.feedback_loss_style_source = self._construct_feedback_loss(
-        #     self.img_spe_source_com_target, 
-        #     self.source_specific_latent, 
-        #     self.target_common_latent,
-        #     self.source_autoencoder)
+        self.feedback_loss_source, self.feedback_loss_style_source = self._construct_feedback_loss(
+            self.img_spe_source_com_target, 
+            self.source_specific_latent, 
+            self.target_common_latent,
+            self.source_autoencoder)
             
-        # self.feedback_loss_target, self.feedback_loss_style_target = self._construct_feedback_loss(
-        #     self.img_spe_target_com_source, 
-        #     self.target_specific_latent, 
-        #     self.source_common_latent,
-        #     self.target_autoencoder)
+        self.feedback_loss_target, self.feedback_loss_style_target = self._construct_feedback_loss(
+            self.img_spe_target_com_source, 
+            self.target_specific_latent, 
+            self.source_common_latent,
+            self.target_autoencoder)
 
         with tf.variable_scope("loss_autoencoder_{}".format(self.source_autoencoder.name)) as scope:
             with tf.name_scope(scope.original_name_scope):
@@ -289,8 +289,8 @@ class DomainAdaptation:
         tf.summary.image("reconstruct_target_data", self.reconstruct_source_target_data, 3)
         tf.summary.scalar("feature_classifier_loss", self.loss_feature_classifier)
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
-        # tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
-        # tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
+        tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
+        tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
         tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
         
     def merge_all(self):
