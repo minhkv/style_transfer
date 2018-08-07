@@ -381,8 +381,6 @@ class DomainAdaptation:
             [self.merged, self.loss_step4_g, self.loss_step4_d, self.optimizer_step4_g, self.optimizer_step4_d],
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
-        # print("Range F2: {} to {}".format(np.min(f2_df), np.max(f2_df)))
-        # summary = self.sess.run(self.merged, feed_dict=self._feed_dict(batch_source, batch_target, source_label))
         print("Iter {}: loss step4 g: {:.4f}, loss step4 d: {:.4f}".format(step, loss_g, loss_d))
         self.train_writer.add_summary(summary, step)
     

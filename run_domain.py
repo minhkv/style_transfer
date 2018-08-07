@@ -77,8 +77,8 @@ usps_data.sample_dataset(1800)
 
 r_1_fc = 15000
 r_2_rec = 5000
-r_3_df = 10000
-r_4_di = 10
+r_3_df = 15000
+r_4_di = 5000
 current_step = 35000
 
 # # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
