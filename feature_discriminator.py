@@ -82,6 +82,7 @@ class FeatureDiscriminator(Discriminator):
             with tf.name_scope("total"):
                 self.total_loss_g = self.loss_g_feature #+ self.class_loss 
                 self.total_loss_d = self.loss_d_feature + self.class_loss
+                self.total_loss = self.total_loss_g + self.total_loss_d
             self.vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
 
     def _construct_summary(self):
@@ -89,6 +90,7 @@ class FeatureDiscriminator(Discriminator):
         # tf.summary.scalar("type_loss_g_target_{}".format(self.name), self.loss_g_feature_target)
         tf.summary.scalar("loss_df_g_{}".format(self.name), self.loss_g_feature)
         tf.summary.scalar("loss_df_d_{}".format(self.name), self.loss_d_feature)
+        tf.summary.scalar("loss_df_total", self.total_loss)
         tf.summary.scalar("loss_df_type_source_d_{}".format(self.name), self.loss_d_source)
         tf.summary.scalar("loss_df_type_target_d_{}".format(self.name), self.loss_d_target)
         tf.summary.scalar("loss_df_class_{}".format(self.name), self.class_loss)
