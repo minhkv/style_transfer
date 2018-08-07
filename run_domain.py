@@ -58,13 +58,13 @@ domain_adaptation.merge_all()
 #     if var.name.startswith('feature_classifier_{}'.format(domain_adaptation.name)) 
 #     and 'BatchNorm' in str(var.name)
 #     ]
-# # variable_not_restored = []
-# variable_to_restore = [var for var in tf.trainable_variables()
-#     if var not in variable_not_restored]
+variable_not_restored = domain_adaptation.image_discriminator_source.vars_d + domain_adaptation_target.vars_d
+variable_to_restore = [var for var in tf.trainable_variables()
+    if var not in variable_not_restored]
 
-# saver = tf.train.Saver(var_list=variable_to_restore)
+saver = tf.train.Saver(max_to_keep=100, var_list=variable_to_restore)
 
-saver = tf.train.Saver(max_to_keep=100)
+# saver = tf.train.Saver(max_to_keep=100)
 
 batch_size = 100  # Number of samples in each batch
 usps_data = USPSDataset(batch_size=batch_size, sess=domain_adaptation.sess)
