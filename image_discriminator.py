@@ -100,5 +100,11 @@ class ImageDiscriminator(Discriminator):
         self.vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
 
     def _construct_summary(self):
-        tf.summary.scalar('acc_type_{}'.format(self.name), self.acc_type)
-        tf.summary.scalar('acc_class_real_{}'.format(self.name), self.class_acc_source)
+        with tf.name_scope('image_discriminator_{}'.format(self.name)):
+            tf.summary.scalar('acc_type_{}'.format(self.name), self.acc_type)
+            tf.summary.scalar('acc_class_real_{}'.format(self.name), self.class_acc_source)
+            tf.summary.scalar('loss_type_g_{}'.format(self.name), self.loss_g_feature)
+            tf.summary.scalar('loss_type_d_{}'.format(self.name), self.loss_d_feature)
+            tf.summary.scalar('loss_class_{}'.format(self.name), self.class_loss)
+        
+        

@@ -308,11 +308,14 @@ class DomainAdaptation:
         tf.summary.image("spe_source_com_target", self.img_spe_source_com_target, 3)
         tf.summary.image("spe_target_com_source", self.img_spe_target_com_source, 3)
         tf.summary.image("reconstruct_target_data", self.reconstruct_source_target_data, 3)
-        tf.summary.scalar("feature_classifier_loss", self.loss_feature_classifier)
+        
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
-        tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
-        tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
-        tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
+        with tf.name_scope('L2'):
+            tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
+            tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
+        with tf.name_scope('feature_classifier'):
+            tf.summary.scalar("feature_classifier_loss", self.loss_feature_classifier)
+            tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
         
     def merge_all(self):
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=self.gpu_fraction)

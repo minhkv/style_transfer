@@ -58,7 +58,7 @@ domain_adaptation.merge_all()
 #     if var.name.startswith('feature_classifier_{}'.format(domain_adaptation.name)) 
 #     and 'BatchNorm' in str(var.name)
 #     ]
-variable_not_restored = domain_adaptation.image_discriminator_source.vars_d + domain_adaptation_target.vars_d
+variable_not_restored = domain_adaptation.image_discriminator_source.vars_d + domain_adaptation.image_discriminator_target.vars_d
 variable_to_restore = [var for var in tf.trainable_variables()
     if var not in variable_not_restored]
 
@@ -107,24 +107,26 @@ current_step = 35000
 
 # save_path = saver.save(domain_adaptation.sess, os.path.join(step2_model, "model_step2_{}.ckpt".format(current_step)))
 
-saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/rerun_all_change_loss_s3/step3/model_step3_34999.ckpt")
 # domain_adaptation.duplicate_source_ae_to_target_ae()
 
-# saver = tf.train.Saver()
+# domain_adaptation.set_logdir(step3_log)
+# for step in (range(r_3_df)):
+#     if (step + 1) % save_iter == 0:
+#         save_path = saver.save(domain_adaptation.sess, os.path.join(step3_model, "model_step3_{}.ckpt".format(step + current_step)))
+#     batch_img, batch_label = mnist_data.next_batch()
+#     batch_target, label_target = usps_data.next_batch()
+#     domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
+# current_step += r_3_df
 
-domain_adaptation.set_logdir(step3_log)
-for step in (range(r_3_df)):
-    if (step + 1) % save_iter == 0:
-        save_path = saver.save(domain_adaptation.sess, os.path.join(step3_model, "model_step3_{}.ckpt".format(step + current_step)))
-    batch_img, batch_label = mnist_data.next_batch()
-    batch_target, label_target = usps_data.next_batch()
-    domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
-current_step += r_3_df
+saver.restore(domain_adaptation.sess, "/content/drive/DaiHoc/ThucTap/Coding/style_transfer/model/model_step3_44999.ckpt")
 
 domain_adaptation.set_logdir(step4_log)
 for step in (range(r_4_di)):
     if (step + 1) % save_iter == 0:
         save_path = saver.save(domain_adaptation.sess, os.path.join(step4_model, "model_step4_{}.ckpt".format(step + current_step)))
-    batch_img, batch_label = mnist_data.next_batch_train()
-    batch_target, label_target = usps_data.next_batch_train()
+    batch_img, batch_label = mnist_data.next_batch()
+    batch_target, label_target = usps_data.next_batch()
     domain_adaptation.run_step4(batch_img, batch_target, batch_label,  step + current_step)
+    
+    
+    

@@ -88,17 +88,18 @@ class FeatureDiscriminator(Discriminator):
     def _construct_summary(self):
         # tf.summary.scalar("type_loss_g_source_{}".format(self.name), self.loss_g_feature_source)
         # tf.summary.scalar("type_loss_g_target_{}".format(self.name), self.loss_g_feature_target)
-        tf.summary.scalar("loss_df_g_{}".format(self.name), self.loss_g_feature)
-        tf.summary.scalar("loss_df_d_{}".format(self.name), self.loss_d_feature)
-        tf.summary.scalar("loss_df_type", self.loss_df_type)
-        tf.summary.scalar("loss_df_type_source_d_{}".format(self.name), self.loss_d_source)
-        tf.summary.scalar("loss_df_type_target_d_{}".format(self.name), self.loss_d_target)
-        tf.summary.scalar("loss_df_class_{}".format(self.name), self.class_loss)
-        tf.summary.scalar("acc_df_class_{}".format(self.name), self.class_acc_source)
-        tf.summary.scalar("acc_type_source_d", self.acc_type_source)
-        tf.summary.scalar("acc_type_target_d", self.acc_type_target)
-        tf.summary.histogram("type_pred_source", self.type_pred_source)
-        tf.summary.histogram("type_pred_target", self.type_pred_target)
+        with tf.name_scope('feature_discriminator'):
+            tf.summary.scalar("loss_df_g_{}".format(self.name), self.loss_g_feature)
+            tf.summary.scalar("loss_df_d_{}".format(self.name), self.loss_d_feature)
+            tf.summary.scalar("loss_df_type", self.loss_df_type)
+            tf.summary.scalar("loss_df_type_source_d_{}".format(self.name), self.loss_d_source)
+            tf.summary.scalar("loss_df_type_target_d_{}".format(self.name), self.loss_d_target)
+            tf.summary.scalar("loss_df_class_{}".format(self.name), self.class_loss)
+            tf.summary.scalar("acc_df_class_{}".format(self.name), self.class_acc_source)
+            tf.summary.scalar("acc_type_source_d", self.acc_type_source)
+            tf.summary.scalar("acc_type_target_d", self.acc_type_target)
+            tf.summary.histogram("type_pred_source", self.type_pred_source)
+            tf.summary.histogram("type_pred_target", self.type_pred_target)
         
         
         
