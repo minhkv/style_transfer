@@ -79,7 +79,7 @@ r_1_fc = 15000
 r_2_rec = 5000
 r_3_df = 15000
 r_4_di = 5000
-current_step = 35000
+current_step = 45000
 
 # # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
 
@@ -118,8 +118,8 @@ current_step = 35000
 #     domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
 # current_step += r_3_df
 
-saver.restore(domain_adaptation.sess, "/content/drive/DaiHoc/ThucTap/Coding/style_transfer/model/model_step3_44999.ckpt")
-
+saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/rerun_all_change_loss_s3/step3/model_step3_44999.ckpt")
+saver = tf.train.Saver()
 domain_adaptation.set_logdir(step4_log)
 for step in (range(r_4_di)):
     if (step + 1) % save_iter == 0:

@@ -147,6 +147,7 @@ class DomainAdaptation:
         )
         
     def _construct_loss(self):
+        self.loss_reconstruct = self.source_autoencoder.loss + self.target_autoencoder.loss
         # Construct feedback
         self.feedback_loss_source, self.feedback_loss_style_source = self._construct_feedback_loss(
             self.img_spe_source_com_target, 
@@ -308,7 +309,7 @@ class DomainAdaptation:
         tf.summary.image("spe_source_com_target", self.img_spe_source_com_target, 3)
         tf.summary.image("spe_target_com_source", self.img_spe_target_com_source, 3)
         tf.summary.image("reconstruct_target_data", self.reconstruct_source_target_data, 3)
-        
+        tf.summary.scalar('loss_reconstruct', self.loss_reconstruct)
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
         with tf.name_scope('L2'):
             tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)

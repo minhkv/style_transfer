@@ -90,9 +90,11 @@ class ImageDiscriminator(Discriminator):
             with tf.name_scope('loss_class'):
                 # Class loss: only for real 
                 self.class_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits_real, labels=self.class_labels))
+            with tf.name_scope('total'):
                 # total
                 self.total_loss_g = self.loss_g_feature #+ self.class_loss
                 self.total_loss_d = self.loss_d_feature + self.class_loss
+                self.loss_type = self.loss_g_feature + self.loss_d_feature
             with tf.name_scope('acc_class_real'):
                 correct_prediction = tf.equal(tf.argmax(self.class_labels, 1), self.class_predict_real)
                 self.class_acc_source = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -103,8 +105,9 @@ class ImageDiscriminator(Discriminator):
         with tf.name_scope('image_discriminator_{}'.format(self.name)):
             tf.summary.scalar('acc_type_{}'.format(self.name), self.acc_type)
             tf.summary.scalar('acc_class_real_{}'.format(self.name), self.class_acc_source)
-            tf.summary.scalar('loss_type_g_{}'.format(self.name), self.loss_g_feature)
-            tf.summary.scalar('loss_type_d_{}'.format(self.name), self.loss_d_feature)
+            # tf.summary.scalar('loss_type_g_{}'.format(self.name), self.loss_g_feature)
+            # tf.summary.scalar('loss_type_d_{}'.format(self.name), self.loss_d_feature)
+            tf.summary.scalar('loss_type_{}'.format(self.name), self.loss_type)
             tf.summary.scalar('loss_class_{}'.format(self.name), self.class_loss)
         
         

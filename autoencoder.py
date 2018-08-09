@@ -129,9 +129,10 @@ class Autoencoder:
         with tf.variable_scope("loss_autoencoder_{}".format(self.name)):
             self.loss = tf.losses.mean_squared_error(self.ae_inputs, self.ae_outputs)
     def _construct_summary(self):
-        tf.summary.scalar('loss_reconstruct_{}'.format(self.name), self.loss)
-        tf.summary.image('reconstructed_{}'.format(self.name), self.ae_outputs, 3)
-        tf.summary.image('inputs_{}'.format(self.name), self.ae_inputs, 3)
+        with tf.name_scope('autoencoder_{}'.format(self.name)):
+            # tf.summary.scalar('loss_reconstruct_{}'.format(self.name), self.loss)
+            tf.summary.image('reconstructed_{}'.format(self.name), self.ae_outputs, 3)
+            tf.summary.image('inputs_{}'.format(self.name), self.ae_inputs, 3)
 
     def get_split_feature(self, batch, sess):
         return sess.run([self.specific, self.common], feed_dict = {self.ae_inputs: batch})
