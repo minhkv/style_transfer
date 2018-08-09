@@ -179,8 +179,9 @@ class DomainAdaptation:
         with tf.variable_scope("loss_entropy"):
             loss_entropy_gs = entropy_function(self.image_discriminator_source.logits_fake)
             loss_entropy_xt = entropy_function(self.image_discriminator_target.logits_real)
-            loss_entropy_ct = entropy_function(self.feature_discriminator.logits_source)
-            self.loss_entropy = loss_entropy_gs + loss_entropy_xt + loss_entropy_ct
+            loss_entropy_ct = entropy_function(self.feature_discriminator.logits_target)
+            loss_entropy_ct = tf.reshape(loss_entropy_ct, (-1, 10))
+            self.loss_entropy = tf.reduce_mean(loss_entropy_gs + loss_entropy_xt + loss_entropy_ct)
         with tf.variable_scope("loss_semantic"):
             ds_gs = self.image_discriminator_source.logits_fake
             dt_xt = self.image_discriminator_target.logits_real
@@ -225,11 +226,18 @@ class DomainAdaptation:
                 self.image_discriminator_source.vars_d + \
                 self.image_discriminator_target.vars_d
                  #+ self.vars_feature_classifier
-            self.optimizer_step4_g = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="optimize_4_g").minimize(self.loss_step4_g, var_list=varlist_g_4)
-            self.optimizer_step4_d = tf.train.GradientDescentOptimizer(learning_rate=self.lr, name="optimize_4_d").minimize(self.loss_step4_d, var_list=varlist_d_4)
+            self.optimizer_step4_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_4_g").minimize(self.loss_step4_g, var_list=varlist_g_4)
+            self.optimizer_step4_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_4_d").minimize(self.loss_step4_d, var_list=varlist_d_4)
 
         with tf.name_scope("Step5"):
-            pass
+            self.loss_step5_g = self.loss_step4_g + self.total_feedback + self.loss_semantic
+            self.loss_step5_d = self.loss_step4_d + self.total_feedback + self.loss_semantic
+            
+            varlist_g_5 = varlist_g_4
+            varlist_d_5 = varlist_d_4
+            
+            self.optimizer_step5_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_5_g").minimize(self.loss_step5_g, var_list=varlist_g_5)
+            self.optimizer_step5_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_5_d").minimize(self.loss_step5_d, var_list=varlist_d_5)
     def duplicate_source_ae_to_target_ae(self):
         print("[Info] Duplicate source ae to target ae")
         vars_source = self.vars_encoder_source + self.vars_decoder_source
@@ -318,6 +326,8 @@ class DomainAdaptation:
         tf.summary.image("reconstruct_target_data", self.reconstruct_source_target_data, 3)
         tf.summary.scalar('loss_reconstruct', self.loss_reconstruct)
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
+        tf.summary.scalar("loss_semantic", self.loss_semantic)
+        tf.summary.scalar("loss_entropy", self.loss_entropy)
         with tf.name_scope('feedback'):
             tf.summary.scalar("feedback_L2_source", self.feedback_L2_source)
             tf.summary.scalar("feedback_L2_target", self.feedback_L2_target)
@@ -392,6 +402,14 @@ class DomainAdaptation:
             feed_dict=self._feed_dict(batch_source, batch_target, source_label)
         )
         print("Iter {}: loss step4 g: {:.4f}, loss step4 d: {:.4f}".format(step, loss_g, loss_d))
+        self.train_writer.add_summary(summary, step)
+        
+    def run_step5(self, batch_source, batch_target, source_label, step):
+        summary, loss_g, loss_d, _, _= self.sess.run(
+            [self.merged, self.loss_step5_g, self.loss_step5_d, self.optimizer_step5_g, self.optimizer_step5_d],
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+        )
+        print("Iter {}: loss step5 g: {:.4f}, loss step5 d: {:.4f}".format(step, loss_g, loss_d))
         self.train_writer.add_summary(summary, step)
     
     

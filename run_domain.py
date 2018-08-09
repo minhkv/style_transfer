@@ -19,11 +19,17 @@ step1_log = os.path.join(logdir, 'step1')
 step2_log = os.path.join(logdir, 'step2')
 step3_log = os.path.join(logdir, 'step3')
 step4_log = os.path.join(logdir, 'step4')
+step5_log = os.path.join(logdir, 'step5')
+step6_log = os.path.join(logdir, 'step6')
+step7_log = os.path.join(logdir, 'step7')
 
 step1_model = os.path.join(model_folder, 'step1')
 step2_model = os.path.join(model_folder, 'step2')
 step3_model = os.path.join(model_folder, 'step3')
 step4_model = os.path.join(model_folder, 'step4')
+step5_model = os.path.join(model_folder, 'step5')
+step6_model = os.path.join(model_folder, 'step6')
+step7_model = os.path.join(model_folder, 'step7')
 
 if not os.path.exists(step1_model):
     os.makedirs(step1_model)
@@ -33,6 +39,13 @@ if not os.path.exists(step3_model):
     os.makedirs(step3_model)
 if not os.path.exists(step4_model):
     os.makedirs(step4_model)
+if not os.path.exists(step5_model):
+    os.makedirs(step5_model)
+if not os.path.exists(step6_model):
+    os.makedirs(step6_model)
+if not os.path.exists(step7_model):
+    os.makedirs(step7_model)
+
 
 # if os.path.exists(step1_log):
 #     os.system("rm {}/*".format(step1_log))
@@ -79,7 +92,8 @@ r_1_fc = 15000
 r_2_rec = 5000
 r_3_df = 15000
 r_4_di = 5000
-current_step = 45000
+r_5_ex_entropy = 15000
+current_step = 50000
 
 # # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
 
@@ -118,12 +132,23 @@ current_step = 45000
 #     domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
 # current_step += r_3_df
 
-saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/run_all_change_summary/step3/model_step3_44999.ckpt")
-saver = tf.train.Saver()
-domain_adaptation.set_logdir(step4_log)
-for step in (range(r_4_di)):
+# saver.restore(domain_adaptation.sess, "/content/drive/DaiHoc/ThucTap/Coding/style_transfer/model/change_summary/step3/model_step3_44999.ckpt")
+# saver = tf.train.Saver(max_to_keep=100)
+# domain_adaptation.set_logdir(step4_log)
+# for step in (range(r_4_di)):
+#     if (step + 1) % save_iter == 0:
+#         save_path = saver.save(domain_adaptation.sess, os.path.join(step4_model, "model_step4_{}.ckpt".format(step + current_step)))
+#     batch_img, batch_label = mnist_data.next_batch()
+#     batch_target, label_target = usps_data.next_batch()
+#     domain_adaptation.run_step4(batch_img, batch_target, batch_label,  step + current_step)
+# current_step += r_4_di
+saver.restore(domain_adaptation.sess, "/content/drive/DaiHoc/ThucTap/Coding/style_transfer/model/change_summary/step4/model_step4_49999.ckpt")
+saver = tf.train.Saver(max_to_keep=100)
+
+domain_adaptation.set_logdir(step5_log)
+for step in (range(r_5_ex_entropy)):
     if (step + 1) % save_iter == 0:
-        save_path = saver.save(domain_adaptation.sess, os.path.join(step4_model, "model_step4_{}.ckpt".format(step + current_step)))
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step5_model, "model_step5_{}.ckpt".format(step + current_step)))
     batch_img, batch_label = mnist_data.next_batch()
     batch_target, label_target = usps_data.next_batch()
     domain_adaptation.run_step4(batch_img, batch_target, batch_label,  step + current_step)
