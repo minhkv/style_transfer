@@ -63,19 +63,21 @@ class DomainAdaptation:
 
         # Exchange feature
         with tf.variable_scope("feature_exchange_to_source"):
-            # self.source_specific_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="source_specific_latent_{}".format(self.name))
-            # self.target_common_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="target_common_latent_{}".format(self.name))
-            self.source_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_specific_latent_{}".format(self.name))
-            self.target_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_common_latent_{}".format(self.name))
+            # self.source_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_specific_latent_{}".format(self.name))
+            # self.target_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_common_latent_{}".format(self.name))
+            self.source_specific_latent = self.source_autoencoder.specific
+            self.target_common_latent = self.target_autoencoder.common
             spe_source_com_target = tf.concat([self.source_specific_latent, self.target_common_latent], 3)
         with tf.variable_scope("feature_exchange_to_target"):
-            # self.target_specific_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="target_specific_latent_{}".format(self.name))
-            # self.source_common_latent = tf.placeholder(tf.float32, shape=(None, 1, 1, 128), name="source_common_latent_{}".format(self.name))
-            self.target_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_specific_latent_{}".format(self.name))
-            self.source_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_common_latent_{}".format(self.name))
+            # self.target_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_specific_latent_{}".format(self.name))
+            # self.source_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_common_latent_{}".format(self.name))
+            self.target_specific_latent = self.target_autoencoder.specific
+            self.source_common_latent = self.source_autoencoder.common
             spe_target_com_source = tf.concat([self.target_specific_latent, self.source_common_latent], 3)
         with tf.variable_scope("source_label"):
             self.source_label = tf.placeholder(tf.float32, (None, 10), name="source_label_{}".format(self.name)) 
+        
+        
         
         # Autoencoder varlist
         self.vars_encoder_source = [var for var in tf.trainable_variables() if var.name.startswith('encoder_{}'.format(self.source_autoencoder.name))]
@@ -83,7 +85,6 @@ class DomainAdaptation:
         self.vars_decoder_source = [var for var in tf.trainable_variables() if var.name.startswith('decoder_{}'.format(self.source_autoencoder.name))]
         self.vars_decoder_target = [var for var in tf.trainable_variables() if var.name.startswith('decoder_{}'.format(self.target_autoencoder.name))]
         self.vars_feature_classifier = [var for var in tf.trainable_variables() if var.name.startswith('feature_classifier_{}'.format(self.name))]
-        # self.vars_feature_discriminator = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.feature_discriminator.name))]
 
         # Feed target input to source ae
         with tf.variable_scope(self.source_autoencoder.encoder_scope, reuse=True) as scope:
@@ -147,20 +148,24 @@ class DomainAdaptation:
         )
         
     def _construct_loss(self):
-        self.loss_reconstruct = self.source_autoencoder.loss + self.target_autoencoder.loss
+        with tf.name_scope("reconstruct"):
+            self.loss_reconstruct = self.source_autoencoder.loss + self.target_autoencoder.loss
         # Construct feedback
-        self.feedback_loss_source, self.feedback_loss_style_source = self._construct_feedback_loss(
-            self.img_spe_source_com_target, 
-            self.source_specific_latent, 
-            self.target_common_latent,
-            self.source_autoencoder)
+        with tf.name_scope("feedback"):
+            self.feedback_L2_source, self.feedback_reconstruct_style_source = self._construct_feedback_loss(
+                self.img_spe_source_com_target, 
+                self.source_specific_latent, 
+                self.target_common_latent,
+                self.source_autoencoder)
+                
+            self.feedback_L2_target, self.feedback_reconstruct_style_target = self._construct_feedback_loss(
+                self.img_spe_target_com_source, 
+                self.target_specific_latent, 
+                self.source_common_latent,
+                self.target_autoencoder)
             
-        self.feedback_loss_target, self.feedback_loss_style_target = self._construct_feedback_loss(
-            self.img_spe_target_com_source, 
-            self.target_specific_latent, 
-            self.source_common_latent,
-            self.target_autoencoder)
-
+            self.total_feedback = self.feedback_L2_source + self.feedback_L2_target + self.feedback_reconstruct_style_source + self.feedback_reconstruct_style_target
+        
         with tf.variable_scope("loss_autoencoder_{}".format(self.source_autoencoder.name)) as scope:
             with tf.name_scope(scope.original_name_scope):
                 self.loss_reconstruct_source_img_target = tf.losses.mean_squared_error(self.target_autoencoder.ae_inputs, self.reconstruct_source_target_data)
@@ -234,15 +239,15 @@ class DomainAdaptation:
     def collect_feature(self, batch_source, batch_target, source_label, step):
         spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
         spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
-        # self.feature = np.concatenate((self.feature, spe_source), axis=0)
-        # self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_source))))
+        self.feature = np.concatenate((self.feature, spe_source), axis=0)
+        self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_source))))
         self.feature = np.concatenate((self.feature, com_source), axis=0)
-        self.meta_data = np.concatenate((self.meta_data, np.zeros(len(com_source))))
+        self.meta_data = np.concatenate((self.meta_data, np.ones(len(com_source))))
 
-        # self.feature = np.concatenate((self.feature, spe_target), axis=0)
-        # self.meta_data = np.concatenate((self.meta_data, np.zeros(len(spe_target))))
+        self.feature = np.concatenate((self.feature, spe_target), axis=0)
+        self.meta_data = np.concatenate((self.meta_data, 2 * np.ones(len(spe_target))))
         self.feature = np.concatenate((self.feature, com_target), axis=0)
-        self.meta_data = np.concatenate((self.meta_data, np.ones(len(com_target))))
+        self.meta_data = np.concatenate((self.meta_data, 3 * np.ones(len(com_target))))
         print(len(self.feature))
 
     def visualize_feature(self):
@@ -313,9 +318,13 @@ class DomainAdaptation:
         tf.summary.image("reconstruct_target_data", self.reconstruct_source_target_data, 3)
         tf.summary.scalar('loss_reconstruct', self.loss_reconstruct)
         tf.summary.scalar("source_reconstruct_target_data", self.loss_reconstruct_source_img_target)
-        with tf.name_scope('L2'):
-            tf.summary.scalar("feedback_loss_source", self.feedback_loss_source)
-            tf.summary.scalar("feedback_loss_target", self.feedback_loss_target)
+        with tf.name_scope('feedback'):
+            tf.summary.scalar("feedback_L2_source", self.feedback_L2_source)
+            tf.summary.scalar("feedback_L2_target", self.feedback_L2_target)
+            tf.summary.scalar("feedback_reconstruct_style_source", self.feedback_reconstruct_style_source)
+            tf.summary.scalar("feedback_reconstruct_style_target", self.feedback_reconstruct_style_target)
+            tf.summary.scalar("total_feedback", self.total_feedback)
+        
         with tf.name_scope('feature_classifier'):
             tf.summary.scalar("feature_classifier_loss", self.loss_feature_classifier)
             tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
@@ -350,7 +359,7 @@ class DomainAdaptation:
             self.target_autoencoder.ae_inputs: batch_target,
             self.source_label: s_label
         }
-    
+
     def run_step1(self, batch_source, batch_target, source_label, step):
         summary, loss, _ = self.sess.run(
             [self.merged, self.loss_step1, self.optimizer_step1],
