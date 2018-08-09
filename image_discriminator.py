@@ -13,7 +13,6 @@ class ImageDiscriminator(Discriminator):
                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                     bias_initializer=tf.constant_initializer(0.1))
                 net = tf.nn.relu(net)
-            tf.summary.histogram('C1', net)
             net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S1")
             
             with tf.name_scope('C2'):
@@ -21,7 +20,6 @@ class ImageDiscriminator(Discriminator):
                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                     bias_initializer=tf.constant_initializer(0.1))
                 net = tf.nn.relu(net)
-            tf.summary.histogram('C2', net)
             net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S2")
             with tf.name_scope('C3'):
                 net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', name="C3",
@@ -30,7 +28,6 @@ class ImageDiscriminator(Discriminator):
                 net = tf.nn.relu(net)
                 # net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S3")
                 net = lays.flatten(net, name="C3_flat")
-            tf.summary.histogram('C3', net)
 
         with tf.variable_scope("fully_connected_{}".format(self.name), reuse=tf.AUTO_REUSE):
             with tf.name_scope('F1'):
@@ -39,14 +36,12 @@ class ImageDiscriminator(Discriminator):
                     bias_initializer=tf.constant_initializer(0.1))
                 net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
                 net = tf.nn.relu(net)
-            tf.summary.histogram('F1', net)
             with tf.name_scope('F2'):
                 net = lays.dense(net, 128, name="F2",
                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                     bias_initializer=tf.constant_initializer(0.1))
                 net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
                 net = tf.nn.relu(net)
-            tf.summary.histogram('F2', net)
             pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output")
             pred_class = tf.nn.softmax(pred_class, name="prob_class")
             pred_type = lays.dense(net, 1, activation=tf.nn.sigmoid, name="type")

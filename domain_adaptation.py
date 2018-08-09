@@ -46,14 +46,12 @@ class DomainAdaptation:
                 bias_initializer=tf.constant_initializer(0.1))
             net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
-        tf.summary.histogram("F1_ac_fc", net)
         with tf.name_scope("F1"):
             net = lays.dense(net, 128, 
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 
                 bias_initializer=tf.constant_initializer(0.1))
             net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
-        tf.summary.histogram("F2_ac_fc", net)
         with tf.name_scope("output"):
             net = lays.dense(net, 10, 
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 

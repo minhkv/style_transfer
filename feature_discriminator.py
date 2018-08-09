@@ -12,17 +12,14 @@ class FeatureDiscriminator(Discriminator):
                 bias_initializer=tf.constant_initializer(0.1))
             net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
-        tf.summary.histogram("F1_activation_df", net)
         with tf.name_scope("F2"):
             net = lays.dense(net, 128, name="F2",
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                 bias_initializer=tf.constant_initializer(0.1))
-            net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
             
         self.endpoints['F2_df'] = net
         
-        tf.summary.histogram("F2_activation_df", net)
         pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output_class")
         pred_class = tf.nn.softmax(pred_class, name="prob_class")
         pred_type = lays.dense(net, 1, activation=tf.nn.sigmoid, name="output_type")
