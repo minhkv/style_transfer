@@ -118,7 +118,7 @@ current_step = 45000
 #     domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
 # current_step += r_3_df
 
-saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/rerun_all_change_loss_s3/step3/model_step3_44999.ckpt")
+saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/run_all_change_summary/step3/model_step3_44999.ckpt")
 saver = tf.train.Saver()
 domain_adaptation.set_logdir(step4_log)
 for step in (range(r_4_di)):

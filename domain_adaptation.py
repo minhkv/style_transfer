@@ -202,11 +202,13 @@ class DomainAdaptation:
                 self.source_autoencoder.loss + \
                 self.target_autoencoder.loss + \
                 self.feature_discriminator.total_loss_g + \
-                self.image_discriminator_source.total_loss_g + \
-                self.image_discriminator_target.total_loss_g
+                self.image_discriminator_source.loss_g_feature + \
+                self.image_discriminator_target.loss_g_feature
             self.loss_step4_d = self.feature_discriminator.total_loss_d + \
-                self.image_discriminator_source.total_loss_d + \
-                self.image_discriminator_target.total_loss_d
+                self.image_discriminator_source.loss_d_feature + \
+                self.image_discriminator_source.class_loss_real + \
+                self.image_discriminator_target.loss_d_feature + \
+                self.image_discriminator_target.class_loss_fake
             varlist_g_4 = self.vars_feature_classifier + \
                 self.vars_encoder_source + \
                 self.vars_encoder_target + \
