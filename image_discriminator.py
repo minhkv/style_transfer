@@ -42,15 +42,17 @@ class ImageDiscriminator(Discriminator):
                     bias_initializer=tf.constant_initializer(0.1))
                 net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
                 net = tf.nn.relu(net)
+            pred_common = lays.dense(net, 128, activation=tf.nn.relu, name="common")
             pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output")
             pred_class = tf.nn.softmax(pred_class, name="prob_class")
             pred_type = lays.dense(net, 1, activation=tf.nn.sigmoid, name="type")
-        return pred_class, pred_type
+        return pred_common, pred_class, pred_type
         
     def _construct_graph(self):
         
         self.inputs_real = self.endpoints["inputs_real"]
         self.inputs_fake = self.endpoints["inputs_fake"]
+        spe, self.inputs_common = tf.split(self.inputs_fake, num_or_size_splits=2, axis=3, name="split_{}".format(self.name))
         self.vars_generator = self.endpoints["vars_generator"]
         self.class_labels = self.endpoints["class_labels"]
         
