@@ -67,9 +67,9 @@ class ImageDiscriminator(Discriminator):
         
         with tf.variable_scope("loss_image_discriminator_{}".format(self.name)):
             with tf.name_scope('loss_d'):
-                loss_d_real = binary_cross_entropy(tf.ones_like(self.type_pred_real), self.type_pred_real)
-                loss_d_fake = binary_cross_entropy(tf.zeros_like(self.type_pred_fake), self.type_pred_fake)
-                self.loss_d_feature = tf.reduce_mean(0.5 * (loss_d_real + loss_d_fake))
+                loss_d_real = tf.losses.sigmoid_cross_entropy(tf.ones_like(self.type_pred_real), self.type_pred_real)
+                loss_d_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(self.type_pred_fake), self.type_pred_fake)
+                self.loss_d_feature = (0.5 * (loss_d_real + loss_d_fake))
             with tf.name_scope('acc_type'):
                 pred_type_real = tf.round(self.type_pred_real)
                 pred_type_fake = tf.round(self.type_pred_fake)
@@ -79,9 +79,8 @@ class ImageDiscriminator(Discriminator):
                 self.acc_type_fake = tf.reduce_mean(tf.cast(self.acc_type_fake, tf.float32))
                 self.acc_type = 0.5 * (self.acc_type_real + self.acc_type_fake)
             with tf.name_scope('loss_g'):
-                loss_g_feature_real = tf.reduce_mean(binary_cross_entropy(tf.zeros_like(self.type_pred_real), self.type_pred_real)) # gen fake common
-                self.loss_g_feature = tf.reduce_mean(loss_g_feature_real)
-            
+                self.loss_g_feature = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(tf.ones_like(self.type_pred_fake), self.type_pred_fake)) # style transfer image
+                
             with tf.name_scope('loss_class'):
                 # Class loss: only for real 
                 self.class_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits_real, labels=self.class_labels))
