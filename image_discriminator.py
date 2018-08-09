@@ -44,7 +44,7 @@ class ImageDiscriminator(Discriminator):
                 net = tf.nn.relu(net)
             pred_common = lays.dense(net, 128, activation=tf.nn.relu, name="common")
             pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output")
-            pred_class = tf.nn.softmax(pred_class, name="prob_class")
+            # pred_class = tf.nn.softmax(pred_class, name="prob_class")
             pred_type = lays.dense(net, 1, activation=tf.nn.sigmoid, name="type")
         return pred_common, pred_class, pred_type
         

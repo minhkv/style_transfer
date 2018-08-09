@@ -12,7 +12,8 @@ from tsne_utils import *
 
 lays = tf.layers
 def entropy_function(pk):
-    return -pk * tf.log(pk)
+    sm_pk = tf.nn.softmax(pk)
+    return tf.losses.softmax_cross_entropy(sm_pk, pk)
 def one_hot_encoding(labels, depth=10):
     one_hot_labels = np.zeros((len(labels), depth))
     for o, l in zip(one_hot_labels, labels):
@@ -180,7 +181,7 @@ class DomainAdaptation:
             loss_entropy_gs = entropy_function(self.image_discriminator_source.logits_fake)
             loss_entropy_xt = entropy_function(self.image_discriminator_target.logits_real)
             loss_entropy_ct = entropy_function(self.feature_discriminator.logits_target)
-            loss_entropy_ct = tf.reshape(loss_entropy_ct, (-1, 10))
+            # loss_entropy_ct = tf.reshape(loss_entropy_ct, (-1, 10))
             self.loss_entropy = tf.reduce_mean(loss_entropy_gs + loss_entropy_xt + loss_entropy_ct)
         with tf.variable_scope("loss_semantic"):
             ds_gs = self.image_discriminator_source.logits_fake
