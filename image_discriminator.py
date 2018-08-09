@@ -52,18 +52,18 @@ class ImageDiscriminator(Discriminator):
         
         self.inputs_real = self.endpoints["inputs_real"]
         self.inputs_fake = self.endpoints["inputs_fake"]
-        spe, self.inputs_common = tf.split(self.inputs_fake, num_or_size_splits=2, axis=3, name="split_{}".format(self.name))
+        self.inputs_common = self.endpoints["common"]
         self.vars_generator = self.endpoints["vars_generator"]
         self.class_labels = self.endpoints["class_labels"]
         
         with tf.variable_scope("discriminator_{}".format(self.name)) as scope:
-            self.logits_real, self.type_pred_real = self.model(self.inputs_real)
+            self.pred_common_real, self.logits_real, self.type_pred_real = self.model(self.inputs_real)
             with tf.name_scope("class_real"):
                 self.class_predict_real = tf.reshape(self.logits_real, (-1, 10))
                 self.class_predict_real = tf.argmax(self.class_predict_real, axis=1, name="df_class_real")
         with tf.variable_scope(scope, reuse=True) as scope2:
             with tf.name_scope(scope2.original_name_scope):
-                self.logits_fake, self.type_pred_fake = self.model(self.inputs_fake)
+                self.pred_common_fake, self.logits_fake, self.type_pred_fake = self.model(self.inputs_fake)
                 with tf.name_scope("class_fake"):
                     self.class_predict_fake = tf.reshape(self.logits_real, (-1, 10))
                     self.class_predict_fake = tf.argmax(self.class_predict_real, axis=1, name="df_class_fake")

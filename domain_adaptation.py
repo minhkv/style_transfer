@@ -129,6 +129,7 @@ class DomainAdaptation:
             endpoints={
                 "inputs_real": self.source_autoencoder.ae_outputs,
                 "inputs_fake": self.img_spe_source_com_target,
+                "common": self.target_autoencoder.common,
                 "vars_generator": self.vars_decoder_source,
                 "class_labels": self.source_label
             }
@@ -139,6 +140,7 @@ class DomainAdaptation:
             endpoints={
                 "inputs_real": self.target_autoencoder.ae_outputs,
                 "inputs_fake": self.img_spe_target_com_source,
+                "common": self.source_autoencoder.common,
                 "vars_generator": self.vars_decoder_target,
                 "class_labels": self.source_label
             }
