@@ -88,14 +88,14 @@ usps_data.sample_dataset(1800)
 
 # mnist_data.one_hot_encoding_label()
 
-r_1_fc = 15000
-r_2_rec = 5000
-r_3_df = 15000
-r_4_di = 5000
-r_5_ex_entropy = 15000
-current_step = 45000
+r_1_fc = 15
+r_2_rec = 5
+r_3_df = 15
+r_4_di = 5
+r_5_ex_entropy = 8000
+current_step = 57000
 
-# # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
+# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
 
 # domain_adaptation.set_logdir(step1_log)
 # for step in (range(r_1_fc)):
@@ -103,12 +103,10 @@ current_step = 45000
 #         save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(step)))
 #     batch_img, batch_label = mnist_data.next_batch()
 #     batch_target, label_target = usps_data.next_batch()
-#     domain_adaptation.run_step1(batch_img, batch_target, batch_label,  step + current_step)
+#     domain_adaptation.run_step1(batch_img, batch_target, batch_label, label_target,  step + current_step)
     
 # current_step += r_1_fc
 # save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
-
-# # # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(4999)))
 
 # domain_adaptation.set_logdir(step2_log)
 # for step in (range(r_2_rec)):
@@ -116,10 +114,8 @@ current_step = 45000
 #         save_path = saver.save(domain_adaptation.sess, os.path.join(step2_model, "model_step2_{}.ckpt".format(step + current_step)))
 #     batch_img, batch_label = mnist_data.next_batch()
 #     batch_target, label_target = usps_data.next_batch()
-#     domain_adaptation.run_step2(batch_img, batch_target, batch_label,  step + current_step)
+#     domain_adaptation.run_step2(batch_img, batch_target, batch_label, label_target,  step + current_step)
 # current_step += r_2_rec
-
-# save_path = saver.save(domain_adaptation.sess, os.path.join(step2_model, "model_step2_{}.ckpt".format(current_step)))
 
 # domain_adaptation.duplicate_source_ae_to_target_ae()
 
@@ -129,21 +125,20 @@ current_step = 45000
 #         save_path = saver.save(domain_adaptation.sess, os.path.join(step3_model, "model_step3_{}.ckpt".format(step + current_step)))
 #     batch_img, batch_label = mnist_data.next_batch()
 #     batch_target, label_target = usps_data.next_batch()
-#     domain_adaptation.run_step3(batch_img, batch_target, batch_label,  step + current_step)
+#     domain_adaptation.run_step3(batch_img, batch_target, batch_label, label_target,  step + current_step)
 # current_step += r_3_df
 
-saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/run_all_change_summary/step3/model_step3_44999.ckpt")
+# domain_adaptation.set_logdir(step4_log)
+# for step in (range(r_4_di)):
+#     if (step + 1) % save_iter == 0:
+#         save_path = saver.save(domain_adaptation.sess, os.path.join(step4_model, "model_step4_{}.ckpt".format(step + current_step)))
+#     batch_img, batch_label = mnist_data.next_batch()
+#     batch_target, label_target = usps_data.next_batch()
+#     domain_adaptation.run_step4(batch_img, batch_target, batch_label, label_target,  step + current_step)
+# current_step += r_4_di
+
+saver.restore(domain_adaptation.sess, "/content/drive/DaiHoc/ThucTap/Coding/style_transfer/model/change_summary/step5/model_step5_56999.ckpt")
 saver = tf.train.Saver(max_to_keep=100)
-domain_adaptation.set_logdir(step4_log)
-for step in (range(r_4_di)):
-    if (step + 1) % save_iter == 0:
-        save_path = saver.save(domain_adaptation.sess, os.path.join(step4_model, "model_step4_{}.ckpt".format(step + current_step)))
-    batch_img, batch_label = mnist_data.next_batch()
-    batch_target, label_target = usps_data.next_batch()
-    domain_adaptation.run_step4(batch_img, batch_target, batch_label,  step + current_step)
-current_step += r_4_di
-# saver.restore(domain_adaptation.sess, "/content/drive/DaiHoc/ThucTap/Coding/style_transfer/model/change_summary/step4/model_step4_49999.ckpt")
-# saver = tf.train.Saver(max_to_keep=100)
 
 domain_adaptation.set_logdir(step5_log)
 for step in (range(r_5_ex_entropy)):
@@ -151,7 +146,7 @@ for step in (range(r_5_ex_entropy)):
         save_path = saver.save(domain_adaptation.sess, os.path.join(step5_model, "model_step5_{}.ckpt".format(step + current_step)))
     batch_img, batch_label = mnist_data.next_batch()
     batch_target, label_target = usps_data.next_batch()
-    domain_adaptation.run_step4(batch_img, batch_target, batch_label,  step + current_step)
+    domain_adaptation.run_step5(batch_img, batch_target, batch_label, label_target,  step + current_step)
     
     
     

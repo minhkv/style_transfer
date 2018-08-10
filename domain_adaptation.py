@@ -47,7 +47,7 @@ class DomainAdaptation:
                 bias_initializer=tf.constant_initializer(0.1))
             net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
-        with tf.name_scope("F1"):
+        with tf.name_scope("F2"):
             net = lays.dense(net, 128, 
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 
                 bias_initializer=tf.constant_initializer(0.1))
@@ -64,20 +64,17 @@ class DomainAdaptation:
 
         # Exchange feature
         with tf.variable_scope("feature_exchange_to_source"):
-            # self.source_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_specific_latent_{}".format(self.name))
-            # self.target_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_common_latent_{}".format(self.name))
             self.source_specific_latent = self.source_autoencoder.specific
             self.target_common_latent = self.target_autoencoder.common
             spe_source_com_target = tf.concat([self.source_specific_latent, self.target_common_latent], 3)
         with tf.variable_scope("feature_exchange_to_target"):
-            # self.target_specific_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="target_specific_latent_{}".format(self.name))
-            # self.source_common_latent = tf.get_variable(dtype=tf.float32, shape=(self.batch_size, 1, 1, 128), name="source_common_latent_{}".format(self.name))
             self.target_specific_latent = self.target_autoencoder.specific
             self.source_common_latent = self.source_autoencoder.common
             spe_target_com_source = tf.concat([self.target_specific_latent, self.source_common_latent], 3)
         with tf.variable_scope("source_label"):
             self.source_label = tf.placeholder(tf.float32, (None, 10), name="source_label_{}".format(self.name)) 
-        
+        with tf.variable_scope("target_label"):
+            self.target_label = tf.placeholder(tf.float32, (None, 10), name="target_label_{}".format(self.name)) 
         
         
         # Autoencoder varlist
@@ -109,9 +106,13 @@ class DomainAdaptation:
                 self.img_spe_target_com_source = self.target_autoencoder.decoder(spe_target_com_source)
         
         # Feature classifier
-        with tf.variable_scope("feature_classifier_{}".format(self.name), reuse=tf.AUTO_REUSE):
+        with tf.variable_scope("feature_classifier_{}".format(self.name)):
             self.predict_source_common = self.feature_classifier(self.source_autoencoder.common)
             self.predict_source_common = tf.reshape(self.predict_source_common, (-1, 10))
+            
+        with tf.variable_scope("feature_classifier_{}".format(self.name), reuse=True):
+            self.predict_target_common = self.feature_classifier(self.target_autoencoder.common)
+            self.predict_target_common = tf.reshape(self.predict_target_common, (-1, 10))
             
         
         # Feature discriminator
@@ -123,6 +124,7 @@ class DomainAdaptation:
                 "vars_generator_source": self.vars_encoder_source,
                 "vars_generator_target": self.vars_encoder_target,
                 "class_labels": self.source_label
+                
             }
         )
         # Image discriminator
@@ -133,7 +135,8 @@ class DomainAdaptation:
                 "inputs_fake": self.img_spe_source_com_target,
                 "common": self.target_autoencoder.common,
                 "vars_generator": self.vars_decoder_source,
-                "class_labels": self.source_label
+                "class_labels_real": self.source_label,
+                "class_labels_fake": self.target_label
             }
         )
         
@@ -144,7 +147,8 @@ class DomainAdaptation:
                 "inputs_fake": self.img_spe_target_com_source,
                 "common": self.source_autoencoder.common,
                 "vars_generator": self.vars_decoder_target,
-                "class_labels": self.source_label
+                "class_labels_real": self.target_label,
+                "class_labels_fake": self.source_label
             }
         )
         
@@ -173,9 +177,13 @@ class DomainAdaptation:
         
         with tf.variable_scope("loss_feature_classifier"):
             # Feature classification loss
-            self.loss_feature_classifier = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.predict_source_common, labels=self.source_label), name="loss_feature_classifier")
-            correct_prediction = tf.equal(tf.argmax(self.source_label, 1), tf.argmax(self.predict_source_common, 1))
-            self.feature_classifier_accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+            self.loss_fc_source = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.predict_source_common, labels=self.source_label), name="loss_fc_source")
+            self.loss_fc_target = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.predict_target_common, labels=self.target_label), name="loss_fc_target")
+            correct_prediction_source = tf.equal(tf.argmax(self.source_label, 1), tf.argmax(self.predict_source_common, 1))
+            self.fc_accuracy_source = tf.reduce_mean(tf.cast(correct_prediction_source, tf.float32))
+            
+            correct_prediction_target = tf.equal(tf.argmax(self.target_label, 1), tf.argmax(self.predict_target_common, 1))
+            self.fc_accuracy_target = tf.reduce_mean(tf.cast(correct_prediction_target, tf.float32))
             
         with tf.variable_scope("loss_entropy"):
             loss_entropy_gs = entropy_function(self.image_discriminator_source.logits_fake)
@@ -189,25 +197,25 @@ class DomainAdaptation:
             self.loss_semantic = tf.losses.mean_squared_error(ds_gs, dt_xt)
         
         with tf.name_scope("Step1"):
-            self.loss_step1 = self.loss_feature_classifier
+            self.loss_step1 = self.loss_fc_source
             var_step1 = self.vars_encoder_source + self.vars_feature_classifier
             self.optimizer_step1 = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_1").minimize(self.loss_step1, var_list=var_step1)
             
         with tf.name_scope("Step2"):
-            self.loss_step2 = self.loss_feature_classifier + self.source_autoencoder.loss + self.loss_reconstruct_source_img_target
+            self.loss_step2 = self.loss_fc_source + self.source_autoencoder.loss + self.loss_reconstruct_source_img_target
             var_step2 = self.vars_feature_classifier + self.vars_encoder_source + self.vars_decoder_source
             self.optimizer_step2 = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
             
         with tf.name_scope("Step3"):
-            self.loss_step3_g = 10 * self.loss_feature_classifier + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
-            #self.loss_step3_d = 10 * self.loss_feature_classifier + self.feature_discriminator.total_loss_d
+            self.loss_step3_g = 10 * self.loss_fc_source + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
+            #self.loss_step3_d = 10 * self.loss_fc_source + self.feature_discriminator.total_loss_d
             self.loss_step3_d = self.feature_discriminator.total_loss_d
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
             varlist_d = self.feature_discriminator.vars_d + self.vars_feature_classifier
             self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
             self.optimizer_step3_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_d").minimize(self.loss_step3_d, var_list=varlist_d)
         with tf.name_scope("Step4"):
-            self.loss_step4_g = 10 * self.loss_feature_classifier + \
+            self.loss_step4_g = 10 * self.loss_fc_source + \
                 self.source_autoencoder.loss + \
                 self.target_autoencoder.loss + \
                 self.feature_discriminator.total_loss_g + \
@@ -337,8 +345,10 @@ class DomainAdaptation:
             tf.summary.scalar("total_feedback", self.total_feedback)
         
         with tf.name_scope('feature_classifier'):
-            tf.summary.scalar("feature_classifier_loss", self.loss_feature_classifier)
-            tf.summary.scalar("feature_classifier_accuracy", self.feature_classifier_accuracy)
+            tf.summary.scalar("loss_fc_source", self.loss_fc_source)
+            tf.summary.scalar("loss_fc_target", self.loss_fc_target)
+            tf.summary.scalar("acc_fc_source", self.fc_accuracy_source)
+            tf.summary.scalar("acc_fc_target", self.fc_accuracy_target)
         
     def merge_all(self):
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=self.gpu_fraction)
@@ -354,61 +364,51 @@ class DomainAdaptation:
         self.logdir = logdir
         self.embedding_dir = os.path.join(self.logdir, 'common')
         self.train_writer = tf.summary.FileWriter(self.logdir, self.sess.graph)
-    def _feed_dict(self, batch_source, batch_target, source_label):
-        # spe_source, com_source = self.source_autoencoder.get_split_feature(batch_source, self.sess)
-        # spe_target, com_target = self.target_autoencoder.get_split_feature(batch_target, self.sess)
         
-        # s_label = one_hot_encoding(source_label, depth=10)
-        # s_label = self.sess.run(tf.one_hot(source_label, depth=10))
-        s_label = source_label
+    def _feed_dict(self, batch_source, batch_target, source_label, target_label):
         return {
-            # self.source_specific_latent: spe_source, 
-            # self.source_common_latent: com_source,
-            # self.target_specific_latent: spe_target, 
-            # self.target_common_latent: com_target, 
             self.source_autoencoder.ae_inputs: batch_source, 
             self.target_autoencoder.ae_inputs: batch_target,
-            self.source_label: s_label
+            self.source_label: source_label,
+            self.target_label: target_label
         }
 
-    def run_step1(self, batch_source, batch_target, source_label, step):
+    def run_step1(self, batch_source, batch_target, source_label, target_label, step):
         summary, loss, _ = self.sess.run(
             [self.merged, self.loss_step1, self.optimizer_step1],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label, target_label)
         )
-
         print("Iter {}: loss step1: {:.4f}".format(step, loss))
         self.train_writer.add_summary(summary, step)
         
-    def run_step2(self, batch_source, batch_target, source_label, step):
+    def run_step2(self, batch_source, batch_target, source_label, target_label, step):
         summary, loss_1, _ = self.sess.run(
             [self.merged, self.loss_step2, self.optimizer_step2],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label, target_label)
         )
-
         print("Iter {}: loss step2: {:.4f}".format(step, loss_1))
         self.train_writer.add_summary(summary, step)
     
-    def run_step3(self, batch_source, batch_target, source_label, step):
+    def run_step3(self, batch_source, batch_target, source_label, target_label, step):
         summary, loss_g, loss_d, _, _= self.sess.run(
             [self.merged, self.loss_step3_g, self.loss_step3_d, self.optimizer_step3_g, self.optimizer_step3_d],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label, target_label)
         )
         print("Iter {}: loss step3 g: {:.4f}, loss step3 d: {:.4f}".format(step, loss_g, loss_d))
         self.train_writer.add_summary(summary, step)
 
-    def run_step4(self, batch_source, batch_target, source_label, step):
+    def run_step4(self, batch_source, batch_target, source_label, target_label, step):
         summary, loss_g, loss_d, _, _= self.sess.run(
             [self.merged, self.loss_step4_g, self.loss_step4_d, self.optimizer_step4_g, self.optimizer_step4_d],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label, target_label)
         )
         print("Iter {}: loss step4 g: {:.4f}, loss step4 d: {:.4f}".format(step, loss_g, loss_d))
         self.train_writer.add_summary(summary, step)
         
-    def run_step5(self, batch_source, batch_target, source_label, step):
+    def run_step5(self, batch_source, batch_target, source_label, target_label, step):
         summary, loss_g, loss_d, _, _= self.sess.run(
             [self.merged, self.loss_step5_g, self.loss_step5_d, self.optimizer_step5_g, self.optimizer_step5_d],
-            feed_dict=self._feed_dict(batch_source, batch_target, source_label)
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label, target_label)
         )
         print("Iter {}: loss step5 g: {:.4f}, loss step5 d: {:.4f}".format(step, loss_g, loss_d))
         self.train_writer.add_summary(summary, step)
