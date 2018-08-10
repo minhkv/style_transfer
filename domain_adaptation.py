@@ -157,19 +157,19 @@ class DomainAdaptation:
             self.loss_reconstruct = self.source_autoencoder.loss + self.target_autoencoder.loss
         # Construct feedback
         with tf.name_scope("feedback"):
-            self.feedback_L2_source, self.feedback_reconstruct_style_source = self._construct_feedback_loss(
+            self.feedback_L2_source = self._construct_feedback_loss(
                 self.img_spe_source_com_target, 
                 self.source_specific_latent, 
                 self.target_common_latent,
                 self.source_autoencoder)
                 
-            self.feedback_L2_target, self.feedback_reconstruct_style_target = self._construct_feedback_loss(
+            self.feedback_L2_target = self._construct_feedback_loss(
                 self.img_spe_target_com_source, 
                 self.target_specific_latent, 
                 self.source_common_latent,
                 self.target_autoencoder)
             
-            self.total_feedback = self.feedback_L2_source + self.feedback_L2_target + self.feedback_reconstruct_style_source + self.feedback_reconstruct_style_target
+            self.total_feedback = self.feedback_L2_source + self.feedback_L2_target
         
         with tf.variable_scope("loss_autoencoder_{}".format(self.source_autoencoder.name)) as scope:
             with tf.name_scope(scope.original_name_scope):
@@ -320,14 +320,14 @@ class DomainAdaptation:
             loss_com = tf.losses.mean_squared_error(com_latent, com)
             loss_fea = loss_spe + loss_com
                 
-        with tf.variable_scope(autoencoder.decoder_scope, reuse=tf.AUTO_REUSE) as scope:
-            with tf.name_scope(scope.original_name_scope):
-                rec_feed_img = autoencoder.decoder(feature_feedback)
+        # with tf.variable_scope(autoencoder.decoder_scope, reuse=tf.AUTO_REUSE) as scope:
+        #     with tf.name_scope(scope.original_name_scope):
+        #         rec_feed_img = autoencoder.decoder(feature_feedback)
                 
-        with tf.variable_scope("loss_rec_feed_{}".format(self.name)):
-            loss_rec_feed = tf.losses.mean_squared_error(gen_img, rec_feed_img, scope="loss_{}".format(self.name))
+        # with tf.variable_scope("loss_rec_feed_{}".format(self.name)):
+        #     loss_rec_feed = tf.losses.mean_squared_error(gen_img, rec_feed_img, scope="loss_{}".format(self.name))
             
-        return loss_fea, loss_rec_feed
+        return loss_fea#, loss_rec_feed
         
     def _construct_summary(self):
         tf.summary.image("spe_source_com_target", self.img_spe_source_com_target, 3)
@@ -340,8 +340,6 @@ class DomainAdaptation:
         with tf.name_scope('feedback'):
             tf.summary.scalar("feedback_L2_source", self.feedback_L2_source)
             tf.summary.scalar("feedback_L2_target", self.feedback_L2_target)
-            tf.summary.scalar("feedback_reconstruct_style_source", self.feedback_reconstruct_style_source)
-            tf.summary.scalar("feedback_reconstruct_style_target", self.feedback_reconstruct_style_target)
             tf.summary.scalar("total_feedback", self.total_feedback)
         
         with tf.name_scope('feature_classifier'):
