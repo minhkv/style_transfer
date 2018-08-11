@@ -23,7 +23,7 @@ def one_hot_encoding(labels, depth=10):
     return one_hot_labels
 
 class DomainAdaptation:
-    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log", batch_size=100, gpu_fraction=0.4):
+    def __init__(self, source_autoencoder, target_autoencoder, lr = 0.01, name="domain_adaptation", logdir="/tmp/log", batch_size=100, gpu_fraction=0.7):
         self.source_autoencoder = source_autoencoder
         self.target_autoencoder = target_autoencoder
         
@@ -207,7 +207,7 @@ class DomainAdaptation:
             self.optimizer_step2 = tf.train.GradientDescentOptimizer(learning_rate=0.01, name="optimize_2").minimize(self.loss_step2, var_list=var_step2)
             
         with tf.name_scope("Step3"):
-            self.loss_step3_g = 10 * self.loss_fc_source + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
+            self.loss_step3_g = 10 * self.loss_fc_source + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.loss_g_feature
             #self.loss_step3_d = 10 * self.loss_fc_source + self.feature_discriminator.total_loss_d
             self.loss_step3_d = self.feature_discriminator.loss_d_feature + self.feature_discriminator.class_loss_source
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
@@ -218,7 +218,7 @@ class DomainAdaptation:
             self.loss_step4_g = 10 * self.loss_fc_source + \
                 self.source_autoencoder.loss + \
                 self.target_autoencoder.loss + \
-                self.feature_discriminator.total_loss_g + \
+                self.feature_discriminator.loss_g_feature + \
                 self.image_discriminator_source.loss_g_feature + \
                 self.image_discriminator_target.loss_g_feature
             self.loss_step4_d = self.feature_discriminator.loss_d_feature + \

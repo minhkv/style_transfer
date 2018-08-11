@@ -45,7 +45,7 @@ class ImageDiscriminator(Discriminator):
             pred_common = lays.dense(net, 128, activation=tf.nn.relu, name="common")
             pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output")
             pred_class = tf.nn.softmax(pred_class, name="prob_class")
-            pred_type = lays.dense(net, 1, activation=tf.nn.sigmoid, name="type")
+            pred_type = lays.dense(net, 1, activation=tf.nn.relu, name="type")
         return pred_common, pred_class, pred_type
         
     def _construct_graph(self):
@@ -77,8 +77,8 @@ class ImageDiscriminator(Discriminator):
                 loss_d_fake = tf.losses.sigmoid_cross_entropy(tf.zeros_like(self.type_pred_fake), self.type_pred_fake)
                 self.loss_d_feature = (0.5 * (loss_d_real + loss_d_fake))
             with tf.name_scope('acc_type'):
-                pred_type_real = tf.round(self.type_pred_real)
-                pred_type_fake = tf.round(self.type_pred_fake)
+                pred_type_real = tf.round(tf.nn.sigmoid(self.type_pred_real))
+                pred_type_fake = tf.round(tf.nn.sigmoid(self.type_pred_fake))
                 self.acc_type_real = tf.equal(tf.ones_like(self.type_pred_real), pred_type_real)
                 self.acc_type_real = tf.reduce_mean(tf.cast(self.acc_type_real, tf.float32))
                 self.acc_type_fake = tf.equal(tf.zeros_like(self.type_pred_fake), pred_type_fake)

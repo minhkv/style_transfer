@@ -20,9 +20,9 @@ class FeatureDiscriminator(Discriminator):
             
         self.endpoints['F2_df'] = net
         
-        pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output_class")
-        pred_class = tf.nn.softmax(pred_class, name="prob_class")
-        pred_type = lays.dense(net, 1, activation=tf.nn.sigmoid, name="output_type")
+        pred_class = lays.dense(net, 10, activation=None, name="output_class")
+        # pred_class = tf.nn.softmax(pred_class, name="prob_class")
+        pred_type = lays.dense(net, 1, activation=None, name="output_type")
         return pred_class, pred_type
     
     def _construct_graph(self):
@@ -54,11 +54,11 @@ class FeatureDiscriminator(Discriminator):
             with tf.name_scope("loss_d"):
                 self.loss_d_source = tf.losses.sigmoid_cross_entropy(tf.ones_like(self.type_pred_source), self.type_pred_source)
                 self.loss_d_target = tf.losses.sigmoid_cross_entropy(tf.zeros_like(self.type_pred_target), self.type_pred_target)
-                self.loss_d_feature = tf.reduce_mean(0.5 * (self.loss_d_source + self.loss_d_target))
+                self.loss_d_feature = 0.5 * (self.loss_d_source + self.loss_d_target)
 
             with tf.name_scope("acc_type"):
-                pred_type_source = tf.round(self.type_pred_source)
-                pred_type_target = tf.round(self.type_pred_target)
+                pred_type_source = tf.round(tf.nn.sigmoid(self.type_pred_source))
+                pred_type_target = tf.round(tf.nn.sigmoid(self.type_pred_target))
                 self.acc_type_source = tf.equal(tf.ones_like(self.type_pred_source), pred_type_source)
                 self.acc_type_source = tf.reduce_mean(tf.cast(self.acc_type_source, tf.float32))
                 self.acc_type_target = tf.equal(tf.zeros_like(self.type_pred_target), pred_type_target)
@@ -83,8 +83,6 @@ class FeatureDiscriminator(Discriminator):
                 self.class_acc_target = tf.reduce_mean(tf.cast(correct_prediction_target, tf.float32))
 
             with tf.name_scope("total"):
-                self.total_loss_g = self.loss_g_feature #+ self.class_loss 
-                self.total_loss_d = self.loss_d_feature + self.class_loss_source
                 self.loss_df_type = self.loss_g_feature + self.loss_d_feature
             self.vars_d = [var for var in tf.trainable_variables() if var.name.startswith('discriminator_{}'.format(self.name))]
 
