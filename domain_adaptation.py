@@ -123,8 +123,8 @@ class DomainAdaptation:
                 "inputs_target": self.target_autoencoder.common,
                 "vars_generator_source": self.vars_encoder_source,
                 "vars_generator_target": self.vars_encoder_target,
-                "class_labels": self.source_label
-                
+                "class_labels_source": self.source_label,
+                "class_labels_target": self.target_label
             }
         )
         # Image discriminator
@@ -209,7 +209,7 @@ class DomainAdaptation:
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_fc_source + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.total_loss_g
             #self.loss_step3_d = 10 * self.loss_fc_source + self.feature_discriminator.total_loss_d
-            self.loss_step3_d = self.feature_discriminator.total_loss_d
+            self.loss_step3_d = self.feature_discriminator.loss_d_feature + self.feature_discriminator.class_loss_source
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
             varlist_d = self.feature_discriminator.vars_d + self.vars_feature_classifier
             self.optimizer_step3_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_3_g").minimize(self.loss_step3_g, var_list=varlist_g)
@@ -221,7 +221,8 @@ class DomainAdaptation:
                 self.feature_discriminator.total_loss_g + \
                 self.image_discriminator_source.loss_g_feature + \
                 self.image_discriminator_target.loss_g_feature
-            self.loss_step4_d = self.feature_discriminator.total_loss_d + \
+            self.loss_step4_d = self.feature_discriminator.loss_d_feature + \
+                self.feature_discriminator.class_loss_source + \
                 self.image_discriminator_source.loss_d_feature + \
                 self.image_discriminator_source.class_loss_real + \
                 self.image_discriminator_target.loss_d_feature + \
