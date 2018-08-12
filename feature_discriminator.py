@@ -6,8 +6,9 @@ lays = tf.layers
 
 class FeatureDiscriminator(Discriminator):
     def model(self, inputs):
+        net = tf.reshape(inputs, (-1, 128))
         with tf.name_scope("F1"):
-            net = lays.dense(inputs, 128, name="F1",
+            net = lays.dense(net, 128, name="F1",
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                 bias_initializer=tf.constant_initializer(0.1))
             net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
@@ -16,6 +17,7 @@ class FeatureDiscriminator(Discriminator):
             net = lays.dense(net, 128, name="F2",
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                 bias_initializer=tf.constant_initializer(0.1))
+            net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
             
         self.endpoints['F2_df'] = net
@@ -64,15 +66,14 @@ class FeatureDiscriminator(Discriminator):
                 self.acc_type_target = tf.reduce_mean(tf.cast(self.acc_type_target, tf.float32))
                 self.acc_type = 0.5 * (self.acc_type_source + self.acc_type_target)
             with tf.name_scope("loss_g"):
-                self.loss_g_feature_source = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(tf.zeros_like(self.type_pred_source), self.type_pred_source)) # gen target common
-                self.loss_g_feature_target = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(tf.ones_like(self.type_pred_target), self.type_pred_target)) # gen source common
+                self.loss_g_feature_source = tf.losses.sigmoid_cross_entropy(tf.zeros_like(self.type_pred_source), self.type_pred_source) # gen target common
+                self.loss_g_feature_target = tf.losses.sigmoid_cross_entropy(tf.ones_like(self.type_pred_target), self.type_pred_target) # gen source common
                 self.loss_g_feature = 0.5 * (self.loss_g_feature_source + self.loss_g_feature_target)
             
-            # tf.losses.sigmoid_cross_entropy(multi_class_labels = y_real, logits = y_predict)
             # Class loss: only for source 
             with tf.name_scope("class_loss"):
-                self.class_loss_source = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits_source, labels=self.class_labels_source))
-                self.class_loss_target = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.logits_target, labels=self.class_labels_target))
+                self.class_loss_source = tf.losses.softmax_cross_entropy(logits=self.logits_source, onehot_labels=self.class_labels_source)
+                self.class_loss_target = tf.losses.softmax_cross_entropy(logits=self.logits_target, onehot_labels=self.class_labels_target)
                 
             with tf.name_scope("acc_class_source"):
                 correct_prediction_source = tf.equal(tf.argmax(self.class_labels_source, 1), self.class_predict_source)
@@ -87,7 +88,6 @@ class FeatureDiscriminator(Discriminator):
 
     def _construct_summary(self):
         with tf.name_scope('feature_discriminator'):
-            
             tf.summary.scalar("loss_df_type", self.loss_df_type)
             tf.summary.scalar("loss_df_class_source_{}".format(self.name), self.class_loss_source)
             tf.summary.scalar("loss_df_class_target_{}".format(self.name), self.class_loss_target)

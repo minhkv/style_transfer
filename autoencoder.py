@@ -43,7 +43,7 @@ class Autoencoder:
             net = lays.conv2d(net, 128, [5, 5], strides=1, padding='VALID', kernel_initializer=tf.truncated_normal_initializer(stddev=0.02))
             net = tf.nn.relu(net)
         net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S2")
-        
+
         with tf.name_scope("C3"):
             net = lays.conv2d(net, 256, [5, 5], strides=1, padding='VALID', kernel_initializer=tf.truncated_normal_initializer(stddev=0.02))
             net = tf.nn.relu(net)
@@ -76,7 +76,8 @@ class Autoencoder:
             net = lays.conv2d_transpose(net, 256, [5, 5], strides=1, padding='VALID', 
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                 bias_initializer=tf.constant_initializer(0.1))
-            # net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
+            with tf.variable_scope("b_not_restore"):
+                net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
             net = tf.nn.relu(net)
         net = tf.image.resize_images(images=net, size=[32, 32]) 
         

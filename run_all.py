@@ -75,6 +75,8 @@ r_2_rec = 5000
 r_3_df = 25000
 r_4_di = 5000
 r_5_ex_entropy = 39000
+r_6_cp_ex_entropy = 20000
+r_7_all = 2000
 current_step = 0
 saver = tf.train.Saver()
 
@@ -86,6 +88,7 @@ for step in (range(r_1_fc)):
     batch_target, label_target = usps_data.next_batch()
     domain_adaptation.run_step1(batch_img, batch_target, batch_label, label_target,  step + current_step)
 current_step += r_1_fc
+
 
 domain_adaptation.set_logdir(step2_log)
 for step in (range(r_2_rec)):
@@ -124,4 +127,23 @@ for step in (range(r_5_ex_entropy)):
     batch_img, batch_label = mnist_data.next_batch()
     batch_target, label_target = usps_data.next_batch()
     domain_adaptation.run_step5(batch_img, batch_target, batch_label, label_target,  step + current_step)
-    
+
+
+domain_adaptation.duplicate_source_ae_to_target_ae()
+domain_adaptation.duplicate_source_di_to_target_di()
+domain_adaptation.set_logdir(step6_log)
+for step in (range(r_6_cp_ex_entropy)):
+    if (step + 1) % save_iter == 0:
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step6_model, "model_step6_{}.ckpt".format(step + current_step)))
+    batch_img, batch_label = mnist_data.next_batch()
+    batch_target, label_target = usps_data.next_batch()
+    domain_adaptation.run_step6(batch_img, batch_target, batch_label, label_target,  step + current_step)
+
+
+domain_adaptation.set_logdir(step7_log)
+for step in (range(r_7_all)):
+    if (step + 1) % save_iter == 0:
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step7_model, "model_step7_{}.ckpt".format(step + current_step)))
+    batch_img, batch_label = mnist_data.next_batch()
+    batch_target, label_target = usps_data.next_batch()
+    domain_adaptation.run_step7(batch_img, batch_target, batch_label, label_target,  step + current_step)

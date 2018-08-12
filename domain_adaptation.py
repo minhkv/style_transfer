@@ -41,8 +41,9 @@ class DomainAdaptation:
         self._construct_summary()
         
     def feature_classifier(self, inputs):
+        net = tf.reshape(inputs, (-1, 128))
         with tf.name_scope("F1"):
-            net = lays.dense(inputs, 128, 
+            net = lays.dense(net, 128, 
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 
                 bias_initializer=tf.constant_initializer(0.1))
             net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
@@ -57,7 +58,6 @@ class DomainAdaptation:
             net = lays.dense(net, 10, 
                 kernel_initializer=tf.truncated_normal_initializer(stddev=0.1), 
                 bias_initializer=tf.constant_initializer(0.1))
-            net = tf.nn.relu(net)
         return net
     
     def _construct_graph(self):
@@ -104,11 +104,11 @@ class DomainAdaptation:
         # Feature classifier
         with tf.variable_scope("feature_classifier_{}".format(self.name)):
             self.predict_source_common = self.feature_classifier(self.source_autoencoder.common)
-            self.predict_source_common = tf.reshape(self.predict_source_common, (-1, 10))
+            # self.predict_source_common = tf.reshape(self.predict_source_common, (-1, 10))
             
         with tf.variable_scope("feature_classifier_{}".format(self.name), reuse=True):
             self.predict_target_common = self.feature_classifier(self.target_autoencoder.common)
-            self.predict_target_common = tf.reshape(self.predict_target_common, (-1, 10))
+            # self.predict_target_common = tf.reshape(self.predict_target_common, (-1, 10))
             
         
         # Feature discriminator
@@ -243,10 +243,27 @@ class DomainAdaptation:
             
             self.optimizer_step5_g = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_5_g").minimize(self.loss_step5_g, var_list=varlist_g_5)
             self.optimizer_step5_d = tf.train.GradientDescentOptimizer(learning_rate=0.001, name="optimize_5_d").minimize(self.loss_step5_d, var_list=varlist_d_5)
+
+        with tf.name_scope("Step7"):
+            self.loss_step7_g = self.loss_step5_g + self.loss_entropy
+            self.loss_step7_d = self.loss_step5_d + self.loss_entropy
+            
+            varlist_g_7 = varlist_g_5
+            varlist_d_7 = varlist_d_5
+            
+            self.optimizer_step7_g = tf.train.GradientDescentOptimizer(learning_rate=0.0001, name="optimize_7_g").minimize(self.loss_step7_g, var_list=varlist_g_7)
+            self.optimizer_step7_d = tf.train.GradientDescentOptimizer(learning_rate=0.0001, name="optimize_7_d").minimize(self.loss_step7_d, var_list=varlist_d_7)
+        
     def duplicate_source_ae_to_target_ae(self):
         print("[Info] Duplicate source ae to target ae")
         vars_source = self.vars_encoder_source + self.vars_decoder_source
         vars_target = self.vars_encoder_target + self.vars_decoder_target
+        for v_s, v_t in zip(vars_source, vars_target):
+            self.sess.run(v_t.assign(v_s))
+    def duplicate_source_di_to_target_di(self):
+        print("[Info] Duplicate source di to target di")
+        vars_source = self.image_discriminator_source.vars_d
+        vars_target = self.image_discriminator_target.vars_d
         for v_s, v_t in zip(vars_source, vars_target):
             self.sess.run(v_t.assign(v_s))
     def collect_feature(self, batch_source, batch_target, source_label, step):
@@ -402,5 +419,23 @@ class DomainAdaptation:
         )
         print("Iter {}: loss step5 g: {:.4f}, loss step5 d: {:.4f}".format(step, loss_g, loss_d))
         self.train_writer.add_summary(summary, step)
+    
+    def run_step6(self, batch_source, batch_target, source_label, target_label, step):
+        # Step 6 has the same loss and optimizer as step 5
+        summary, loss_g, loss_d, _, _= self.sess.run(
+            [self.merged, self.loss_step5_g, self.loss_step5_d, self.optimizer_step5_g, self.optimizer_step5_d],
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label, target_label)
+        )
+        print("Iter {}: loss step6 g: {:.4f}, loss step6 d: {:.4f}".format(step, loss_g, loss_d))
+        self.train_writer.add_summary(summary, step)
+    def run_step7(self, batch_source, batch_target, source_label, target_label, step):
+        summary, loss_g, loss_d, _, _= self.sess.run(
+            [self.merged, self.loss_step7_g, self.loss_step7_d, self.optimizer_step7_g, self.optimizer_step7_d],
+            feed_dict=self._feed_dict(batch_source, batch_target, source_label, target_label)
+        )
+        print("Iter {}: loss step7 g: {:.4f}, loss step7 d: {:.4f}".format(step, loss_g, loss_d))
+        self.train_writer.add_summary(summary, step)
+    
+
     
     

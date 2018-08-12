@@ -69,16 +69,16 @@ mnist_data = MNISTDataset(batch_size=batch_size, sess=domain_adaptation.sess)
 mnist_data.sample_dataset(2000)
 usps_data.sample_dataset(1800)
 
-# mnist_data.one_hot_encoding_label()
 
-r_1_fc = 15000
+r_1_fc = 25000
 r_2_rec = 5000
-r_3_df = 15000
+r_3_df = 22000
 r_4_di = 5000
-r_5_ex_entropy = 30000
-current_step = 25000
-
-# saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
+r_5_ex_entropy = 39000
+r_6_cp_ex_entropy = 20000
+r_7_all = 2000
+current_step = 30000
+saver = tf.train.Saver(max_to_keep=100)
 
 # domain_adaptation.set_logdir(step1_log)
 # for step in (range(r_1_fc)):
@@ -87,9 +87,8 @@ current_step = 25000
 #     batch_img, batch_label = mnist_data.next_batch()
 #     batch_target, label_target = usps_data.next_batch()
 #     domain_adaptation.run_step1(batch_img, batch_target, batch_label, label_target,  step + current_step)
-    
 # current_step += r_1_fc
-# save_path = saver.save(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(current_step)))
+
 
 # domain_adaptation.set_logdir(step2_log)
 # for step in (range(r_2_rec)):
@@ -100,15 +99,14 @@ current_step = 25000
 #     domain_adaptation.run_step2(batch_img, batch_target, batch_label, label_target,  step + current_step)
 # current_step += r_2_rec
 
-
-variable_not_restored = domain_adaptation.image_discriminator_source.vars_d + domain_adaptation.image_discriminator_target.vars_d
-variable_to_restore = [var for var in tf.trainable_variables()
-    if var not in variable_not_restored]
-saver = tf.train.Saver(max_to_keep=100, var_list=variable_to_restore)
-saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/run_all_change_summary/step2/model_step2_25000.ckpt")
+vars_not_restored = [v for v in tf.trainable_variables() if v.name.startswith("decoder") and "b_not_restore" in v.name]
+vars_to_restore = [v for v in tf.trainable_variables() if v not in vars_not_restored]
+saver = tf.train.Saver(var_list=vars_to_restore)
+saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/fix_architecture_df/step3/model_step3_32999.ckpt")
 saver = tf.train.Saver(max_to_keep=100)
 
-domain_adaptation.duplicate_source_ae_to_target_ae()
+
+# domain_adaptation.duplicate_source_ae_to_target_ae()
 domain_adaptation.set_logdir(step3_log)
 for step in (range(r_3_df)):
     if (step + 1) % save_iter == 0:
@@ -136,6 +134,23 @@ for step in (range(r_5_ex_entropy)):
     batch_img, batch_label = mnist_data.next_batch()
     batch_target, label_target = usps_data.next_batch()
     domain_adaptation.run_step5(batch_img, batch_target, batch_label, label_target,  step + current_step)
-    
-    
-    
+
+
+domain_adaptation.duplicate_source_ae_to_target_ae()
+domain_adaptation.duplicate_source_di_to_target_di()
+domain_adaptation.set_logdir(step6_log)
+for step in (range(r_6_cp_ex_entropy)):
+    if (step + 1) % save_iter == 0:
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step6_model, "model_step6_{}.ckpt".format(step + current_step)))
+    batch_img, batch_label = mnist_data.next_batch()
+    batch_target, label_target = usps_data.next_batch()
+    domain_adaptation.run_step6(batch_img, batch_target, batch_label, label_target,  step + current_step)
+
+
+domain_adaptation.set_logdir(step7_log)
+for step in (range(r_7_all)):
+    if (step + 1) % save_iter == 0:
+        save_path = saver.save(domain_adaptation.sess, os.path.join(step7_model, "model_step7_{}.ckpt".format(step + current_step)))
+    batch_img, batch_label = mnist_data.next_batch()
+    batch_target, label_target = usps_data.next_batch()
+    domain_adaptation.run_step7(batch_img, batch_target, batch_label, label_target,  step + current_step)
