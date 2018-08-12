@@ -21,7 +21,6 @@ class FeatureDiscriminator(Discriminator):
         self.endpoints['F2_df'] = net
         
         pred_class = lays.dense(net, 10, activation=None, name="output_class")
-        # pred_class = tf.nn.softmax(pred_class, name="prob_class")
         pred_type = lays.dense(net, 1, activation=None, name="output_type")
         return pred_class, pred_type
     
@@ -67,7 +66,7 @@ class FeatureDiscriminator(Discriminator):
             with tf.name_scope("loss_g"):
                 self.loss_g_feature_source = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(tf.zeros_like(self.type_pred_source), self.type_pred_source)) # gen target common
                 self.loss_g_feature_target = tf.reduce_mean(tf.losses.sigmoid_cross_entropy(tf.ones_like(self.type_pred_target), self.type_pred_target)) # gen source common
-                self.loss_g_feature = tf.reduce_mean(0.5 * (self.loss_g_feature_source + self.loss_g_feature_target))
+                self.loss_g_feature = 0.5 * (self.loss_g_feature_source + self.loss_g_feature_target)
             
             # tf.losses.sigmoid_cross_entropy(multi_class_labels = y_real, logits = y_predict)
             # Class loss: only for source 

@@ -26,7 +26,7 @@ class ImageDiscriminator(Discriminator):
                     kernel_initializer=tf.truncated_normal_initializer(stddev=0.1),
                     bias_initializer=tf.constant_initializer(0.1))
                 net = tf.nn.relu(net)
-                # net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S3")
+                net = tf.layers.max_pooling2d(net, pool_size=[2, 2], strides=2, name="S3")
                 net = lays.flatten(net, name="C3_flat")
 
         with tf.variable_scope("fully_connected_{}".format(self.name), reuse=tf.AUTO_REUSE):
@@ -42,10 +42,9 @@ class ImageDiscriminator(Discriminator):
                     bias_initializer=tf.constant_initializer(0.1))
                 net = tf.contrib.layers.batch_norm(inputs= net, center=True, scale=True, is_training=True)
                 net = tf.nn.relu(net)
-            pred_common = lays.dense(net, 128, activation=tf.nn.relu, name="common")
-            pred_class = lays.dense(net, 10, activation=tf.nn.relu, name="output")
-            pred_class = tf.nn.softmax(pred_class, name="prob_class")
-            pred_type = lays.dense(net, 1, activation=tf.nn.relu, name="type")
+            pred_common = lays.dense(net, 128, activation=None, name="common")
+            pred_class = lays.dense(net, 10, activation=None, name="output")
+            pred_type = lays.dense(net, 1, activation=None, name="type")
         return pred_common, pred_class, pred_type
         
     def _construct_graph(self):

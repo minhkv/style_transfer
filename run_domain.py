@@ -76,7 +76,7 @@ r_2_rec = 5000
 r_3_df = 15000
 r_4_di = 5000
 r_5_ex_entropy = 30000
-current_step = 40000
+current_step = 25000
 
 # saver.restore(domain_adaptation.sess, os.path.join(step1_model, "model_step1_{}.ckpt".format(999)))
 
@@ -106,7 +106,7 @@ variable_to_restore = [var for var in tf.trainable_variables()
     if var not in variable_not_restored]
 saver = tf.train.Saver(max_to_keep=100, var_list=variable_to_restore)
 saver.restore(domain_adaptation.sess, "/home/acm528/Minh/style_transfer/model/run_all_change_summary/step2/model_step2_25000.ckpt")
-
+saver = tf.train.Saver(max_to_keep=100)
 
 domain_adaptation.duplicate_source_ae_to_target_ae()
 domain_adaptation.set_logdir(step3_log)

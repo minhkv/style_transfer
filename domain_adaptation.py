@@ -87,22 +87,18 @@ class DomainAdaptation:
         # Feed target input to source ae
         with tf.variable_scope(self.source_autoencoder.encoder_scope, reuse=True) as scope:
             with tf.name_scope(scope.original_name_scope):
-                print("[Info] Encode target data by encoder_{}".format(self.source_autoencoder.name))
                 self.latent_source_ae_target_data = self.source_autoencoder.encoder(self.target_autoencoder.ae_inputs)
                 
         with tf.variable_scope(self.source_autoencoder.decoder_scope, reuse=True) as scope:
             with tf.name_scope(scope.original_name_scope):
-                print("[Info] Decode target data by decoder_{}".format(self.source_autoencoder.name))
                 self.reconstruct_source_target_data = self.source_autoencoder.decoder(self.latent_source_ae_target_data)
 
         with tf.variable_scope(self.source_autoencoder.decoder_scope, reuse=True) as scope:
             with tf.name_scope(scope.original_name_scope):
-                print("[Info] Decode exchanged feature by decoder_{}".format(self.source_autoencoder.name))
                 self.img_spe_source_com_target = self.source_autoencoder.decoder(spe_source_com_target)
                 
         with tf.variable_scope(self.target_autoencoder.decoder_scope, reuse=True) as scope:
             with tf.name_scope(scope.original_name_scope):
-                print("[Info] Decode exchanged feature by decoder_{}".format(self.target_autoencoder.name))
                 self.img_spe_target_com_source = self.target_autoencoder.decoder(spe_target_com_source)
         
         # Feature classifier
@@ -208,7 +204,6 @@ class DomainAdaptation:
             
         with tf.name_scope("Step3"):
             self.loss_step3_g = 10 * self.loss_fc_source + self.source_autoencoder.loss + self.target_autoencoder.loss + self.feature_discriminator.loss_g_feature
-            #self.loss_step3_d = 10 * self.loss_fc_source + self.feature_discriminator.total_loss_d
             self.loss_step3_d = self.feature_discriminator.loss_d_feature + self.feature_discriminator.class_loss_source
             varlist_g = self.vars_feature_classifier + self.vars_encoder_source + self.vars_encoder_target + self.vars_decoder_source + self.vars_decoder_target
             varlist_d = self.feature_discriminator.vars_d + self.vars_feature_classifier
@@ -301,9 +296,6 @@ class DomainAdaptation:
     def tsne_sklearn(self):
         x = np.reshape(self.feature, (-1, 128))
         X_embedded = TSNE(n_components=2, learning_rate=200, n_iter=5000).fit_transform(x)
-        # print(X_embedded.shape)
-        # print(np.array(self.meta_data).shape)
-        # X_embedded = np.reshape(X_embedded, (-1, 128))
         plot_embedding(X_embedded, self.meta_data)
         plt.savefig("tsne.png")
     def _construct_optimizer(self):
@@ -311,7 +303,6 @@ class DomainAdaptation:
         
     
     def _construct_feedback_loss(self, gen_img, spe_latent, com_latent, autoencoder):
-        print("[Info] Construct feedback {}".format(autoencoder.name))
         with tf.variable_scope(autoencoder.encoder_scope, reuse=tf.AUTO_REUSE) as scope:
             with tf.name_scope(scope.original_name_scope):
                 feature_feedback = autoencoder.encoder(gen_img)
